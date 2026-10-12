@@ -1,0 +1,6 @@
+{
+  "name": "Noon & Pen | نون والقلم للطباعة والتصميم",
+  "description": "Bilingual (Arabic/English) e-commerce & bespoke printing studio for custom acrylic signs, 3D LED lamps, premium packaging, corporate gifts, and graphic design in Baghdad, Iraq.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

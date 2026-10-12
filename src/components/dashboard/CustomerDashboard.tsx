@@ -1,0 +1,1025 @@
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useAuthStore, SavedDesign } from '../../store/useAuthStore';
+import { OrderRecord, useCartStore } from '../../store/useCartStore';
+import {
+  User,
+  Package,
+  FolderHeart,
+  Settings,
+  LogOut,
+  MapPin,
+  Phone,
+  Mail,
+  Printer,
+  Send,
+  Upload,
+  Trash2,
+  Sparkles,
+  CheckCircle2,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  ExternalLink,
+  ShieldCheck,
+  Plus,
+  X,
+  LayoutDashboard,
+  Repeat,
+  ShoppingBag,
+  Download,
+  Edit2,
+  Check,
+} from 'lucide-react';
+
+interface CustomerDashboardProps {
+  onBackToShop: () => void;
+  onOpenCustomizerWithProduct?: (productId: string) => void;
+}
+
+export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
+  onBackToShop,
+  onOpenCustomizerWithProduct,
+}) => {
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  const {
+    user,
+    pastOrders,
+    savedDesigns,
+    updateProfile,
+    logout,
+    deleteSavedDesign,
+    renameSavedDesign,
+    addSavedDesign,
+  } = useAuthStore();
+
+  const { addItem } = useCartStore();
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'designs' | 'profile'>('overview');
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(pastOrders[0]?.orderId || null);
+  const [reorderSuccessToast, setReorderSuccessToast] = useState(false);
+
+  // Rename design state
+  const [editingDesignId, setEditingDesignId] = useState<string | null>(null);
+  const [editingTitleText, setEditingTitleText] = useState('');
+
+  // Profile Form state
+  const [editName, setEditName] = useState(user?.fullName || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editGovernorate, setEditGovernorate] = useState(user?.governorate || 'بغداد - الكرخ');
+  const [editAddress, setEditAddress] = useState(user?.address || '');
+  const [profileSavedToast, setProfileSavedToast] = useState(false);
+
+  // Upload new design state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [newDesignTitle, setNewDesignTitle] = useState('');
+  const [newDesignCategory, setNewDesignCategory] = useState('led');
+  const [uploadedFileName, setUploadedFileName] = useState('');
+
+  const governorates = [
+    'بغداد - الكرخ',
+    'بغداد - الرصافة',
+    'البصرة',
+    'أربيل',
+    'النجف الأشرف',
+    'كربلاء المقدسة',
+    'السليمانية',
+    'نينوى / الموصل',
+    'بابل / الحلة',
+    'كركوك',
+    'الأنبار',
+    'ذي قار / الناصرية',
+    'ديالى',
+    'ميسان',
+    'المثنى',
+    'القادسية',
+    'واسط',
+    'صلاح الدين',
+    'دهوك',
+  ];
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfile({
+      fullName: editName,
+      phone: editPhone,
+      governorate: editGovernorate,
+      address: editAddress,
+    });
+    setProfileSavedToast(true);
+    setTimeout(() => setProfileSavedToast(false), 2500);
+  };
+
+  const handleAddDesignSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDesignTitle || !uploadedFileName) return;
+
+    addSavedDesign({
+      titleAr: newDesignTitle,
+      titleEn: newDesignTitle,
+      fileName: uploadedFileName,
+      fileSize: '2.1 MB',
+      fileType: 'svg',
+      previewUrl: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
+      productCategory: newDesignCategory,
+      productId: newDesignCategory === 'led' ? 'prod-travel-acrylic-sign' : 'prod-rigid-boxes',
+    });
+
+    setNewDesignTitle('');
+    setUploadedFileName('');
+    setShowUploadModal(false);
+  };
+
+  const handleWhatsAppTrack = (order: OrderRecord) => {
+    const text = isAr
+      ? `مرحباً نون والقلم 🌟\nاستفسار عن مسار تصنيع طلبي رقم: *${order.orderId}*\nالاسم: ${order.shipping.fullName}\nالمبلغ: ${order.grandTotal.toLocaleString()} د.ع\nيرجى تزويدي بآخر تحديث للتصنيع.`
+      : `Hello Noon & Pen 🌟\nTracking my order *${order.orderId}*\nCustomer: ${order.shipping.fullName}\nTotal: ${order.grandTotal.toLocaleString()} IQD.`;
+
+    const encoded = encodeURIComponent(text);
+    const waUrl = `https://wa.me/9647800000000?text=${encoded}`;
+    const link = document.createElement('a');
+    link.href = waUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleReorder = (order: OrderRecord) => {
+    order.items.forEach((item) => {
+      addItem({
+        productId: item.productId,
+        titleAr: item.titleAr,
+        titleEn: item.titleEn,
+        image: item.image,
+        category: item.category,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        customOptions: { ...item.customOptions },
+        customFormData: item.customFormData ? { ...item.customFormData } : undefined,
+      });
+    });
+    setReorderSuccessToast(true);
+    setTimeout(() => setReorderSuccessToast(false), 3000);
+  };
+
+  const handleDownloadInvoice = (order: OrderRecord) => {
+    // Generate clean printable receipt
+    const printableWindow = window.open('', '_blank');
+    if (printableWindow) {
+      printableWindow.document.write(`
+        <!DOCTYPE html>
+        <html dir="${isAr ? 'rtl' : 'ltr'}">
+        <head>
+          <title>${isAr ? 'فاتورة ضريبية رسمية' : 'Official Invoice'} - ${order.orderId}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #1e293b; }
+            .header { border-bottom: 2px solid #9333ea; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
+            .title { font-size: 24px; font-weight: bold; color: #6b21a8; }
+            .details { margin-bottom: 30px; line-height: 1.6; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: ${isAr ? 'right' : 'left'}; }
+            th { background-color: #f8fafc; }
+            .total { font-size: 18px; font-weight: bold; color: #6b21a8; text-align: ${isAr ? 'left' : 'right'}; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="title">${isAr ? 'شركة نون والقلم للطباعة والتصميم' : 'Noon & Pen Design & Printing'}</div>
+              <div>${isAr ? 'بغداد، شارع 14 رمضان، المنصور' : 'Mansour, Baghdad, Iraq'} | +964 780 000 0000</div>
+            </div>
+            <div>
+              <h3>${isAr ? 'فاتورة طلب' : 'INVOICE'}</h3>
+              <p>#${order.orderId}</p>
+              <p>${order.createdAt}</p>
+            </div>
+          </div>
+          <div class="details">
+            <strong>${isAr ? 'العميل:' : 'Customer:'}</strong> ${order.shipping.fullName}<br/>
+            <strong>${isAr ? 'الهاتف:' : 'Phone:'}</strong> ${order.shipping.phone}<br/>
+            <strong>${isAr ? 'العنوان:' : 'Address:'}</strong> ${order.shipping.address} (${order.shipping.governorate})<br/>
+            <strong>${isAr ? 'طريقة الدفع:' : 'Payment:'}</strong> ${isAr ? order.paymentDetails.gatewayNameAr : order.paymentDetails.gatewayNameEn} (${order.paymentDetails.transactionId || 'COD'})
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>${isAr ? 'المنتج والمواصفات المخصصة' : 'Product & Custom Specs'}</th>
+                <th>${isAr ? 'الكمية' : 'Qty'}</th>
+                <th>${isAr ? 'سعر الوحدة' : 'Unit Price'}</th>
+                <th>${isAr ? 'المجموع' : 'Total'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.items
+                .map(
+                  (it, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>
+                    <strong>${isAr ? it.titleAr : it.titleEn}</strong><br/>
+                    ${it.customOptions.customText ? `<em>${it.customOptions.customText}</em><br/>` : ''}
+                    <small>${isAr ? it.customOptions.dimensionLabelAr : it.customOptions.dimensionLabelEn} | ${isAr ? it.customOptions.materialLabelAr : it.customOptions.materialLabelEn}</small>
+                  </td>
+                  <td>${it.quantity}</td>
+                  <td>${it.unitPrice.toLocaleString()} IQD</td>
+                  <td>${it.totalPrice.toLocaleString()} IQD</td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <div class="total">
+            ${isAr ? 'المجموع النهائي الواجب سداده:' : 'Grand Total:'} ${order.grandTotal.toLocaleString()} IQD
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+        </html>
+      `);
+      printableWindow.document.close();
+    } else {
+      window.print();
+    }
+  };
+
+  return (
+    <div className="pt-24 pb-24 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* User Profile Banner Header */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-sky-500 text-white flex items-center justify-center font-bold text-2xl shadow-md shrink-0">
+              {user?.fullName?.charAt(0) || 'م'}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
+                  {user?.fullName || (isAr ? 'حساب العميل' : 'Customer Account')}
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-bold">
+                  {isAr ? 'عميل مميز' : 'Verified Client'}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-slate-500 mt-1">
+                <span className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  {user?.email}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="dir-ltr">{user?.phone}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  {user?.governorate}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="flex items-center gap-6 border-t md:border-t-0 md:border-s border-slate-200 pt-4 md:pt-0 md:ps-8">
+            <div className="text-center">
+              <span className="text-xl font-extrabold text-slate-900 font-mono block">
+                {pastOrders.length}
+              </span>
+              <span className="text-xs text-slate-500">{isAr ? 'الطلبات المنفذة' : 'Total Orders'}</span>
+            </div>
+            <div className="text-center">
+              <span className="text-xl font-extrabold text-purple-700 font-mono block">
+                {savedDesigns.length}
+              </span>
+              <span className="text-xs text-slate-500">{isAr ? 'التصاميم المحفوظة' : 'Saved Designs'}</span>
+            </div>
+            <button
+              onClick={logout}
+              type="button"
+              className="p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              title={isAr ? 'تسجيل الخروج' : 'Log Out'}
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Re-order success toast */}
+        {reorderSuccessToast && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-between shadow-lg animate-fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span>{isAr ? 'تمت إضافة عناصر الطلب والمواصفات المخصصة إلى سلة الشراء بنجاح!' : 'Items with custom specifications re-added to your cart successfully!'}</span>
+            </div>
+            <button
+              onClick={() => onBackToShop()}
+              className="px-3 py-1 rounded-lg bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-50 transition-colors"
+            >
+              {isAr ? 'عرض السلة' : 'View Cart'}
+            </button>
+          </div>
+        )}
+
+        {/* Dashboard Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-slate-200 mb-8 overflow-x-auto pb-1 no-scrollbar">
+          <button
+            onClick={() => setActiveTab('overview')}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'border-purple-600 text-purple-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>{isAr ? 'نظرة عامة والنشاط' : 'Overview & Activity'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('orders')}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'orders'
+                ? 'border-purple-600 text-purple-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>{isAr ? 'سجل الطلبات وتتبع التصنيع' : 'Order History & Tracking'}</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono">
+              {pastOrders.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('designs')}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'designs'
+                ? 'border-purple-600 text-purple-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FolderHeart className="w-4 h-4" />
+            <span>{isAr ? 'التصاميم والشعارات المحفوظة' : 'Saved Designs & Logos'}</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono">
+              {savedDesigns.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'profile'
+                ? 'border-purple-600 text-purple-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>{isAr ? 'إدارة الحساب والعناوين' : 'Profile & Addresses'}</span>
+          </button>
+        </div>
+
+        {/* TAB 0: DASHBOARD OVERVIEW & QUICK ACTIONS */}
+        {activeTab === 'overview' && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Welcome banner with quick stats */}
+            <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
+              <div className="relative z-10 max-w-2xl space-y-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-purple-200">
+                  <Sparkles className="w-3.5 h-3.5 text-sky-300" />
+                  <span>{isAr ? 'منصة العملاء المتقدمة' : 'Noon & Pen VIP Client Portal'}</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  {isAr ? `أهلاً وسهلاً بك، ${user?.fullName?.split(' ')[0] || 'عزيزنا العميل'}!` : `Welcome back, ${user?.fullName || 'Customer'}!`}
+                </h2>
+                <p className="text-sm text-purple-200/80 leading-relaxed">
+                  {isAr
+                    ? 'تابع دورة تصنيع مجسمات الأكريليك وكروت البصمة الخاصة بك مباشرة من ورشتنا في بغداد، أو ابدأ تصميماً جديداً بضغطة زر.'
+                    : 'Track your custom acrylic signs and foil business cards directly from our Baghdad fabrication facility, or initiate a new bespoke project.'}
+                </p>
+
+                {/* Quick Action Buttons */}
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      if (onOpenCustomizerWithProduct) {
+                        onOpenCustomizerWithProduct('prod-acrylic-led-sign');
+                      } else {
+                        onBackToShop();
+                      }
+                    }}
+                    type="button"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-sky-500 hover:from-purple-600 hover:to-sky-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isAr ? 'بدء تخصيص منتج جديد' : 'Start a New Customization'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (pastOrders[0]) {
+                        handleWhatsAppTrack(pastOrders[0]);
+                      }
+                    }}
+                    type="button"
+                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+                  >
+                    <Send className="w-4 h-4 text-emerald-400" />
+                    <span>{isAr ? 'تتبع آخر طلب (#NP)' : 'Track an Order'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('orders')}
+                    type="button"
+                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+                  >
+                    <Package className="w-4 h-4 text-sky-400" />
+                    <span>{isAr ? 'عرض كافة الطلبات' : 'View All Orders'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Orders Spotlight */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-lg text-slate-900">
+                    {isAr ? 'أحدث الطلبات وحالة التصنيع الحالية' : 'Recent Orders & Live Status'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isAr ? 'نظرة سريعة على المنتجات التي تم إرسالها لخط الإنتاج' : 'Quick view of products currently queued or in fabrication'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  type="button"
+                  className="text-xs font-bold text-purple-700 hover:text-purple-800 hover:underline cursor-pointer"
+                >
+                  {isAr ? 'عرض السجل الكامل ←' : 'View full history →'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pastOrders.slice(0, 2).map((ord) => (
+                  <div
+                    key={ord.orderId}
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 transition-all bg-slate-50/50 space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-sm text-slate-900">{ord.orderId}</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                        {isAr ? 'جاري التصنيع' : 'In Production'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {ord.items.map((it) => (
+                        <div key={it.id} className="flex items-center gap-3">
+                          <img src={it.image} alt={it.titleAr} className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-bold text-xs text-slate-900 truncate">{isAr ? it.titleAr : it.titleEn}</h5>
+                            <p className="text-[11px] text-slate-500 font-mono">
+                              {it.quantity} {isAr ? 'قطع' : 'pcs'} · {it.totalPrice.toLocaleString()} IQD
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                      <span className="text-slate-500">{ord.createdAt}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleWhatsAppTrack(ord)}
+                          type="button"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{isAr ? 'تتبع' : 'Track'}</span>
+                        </button>
+                        <button
+                          onClick={() => handleReorder(ord)}
+                          type="button"
+                          className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Repeat className="w-3.5 h-3.5" />
+                          <span>{isAr ? 'إعادة طلب' : 'Re-order'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 1: ORDER HISTORY & PRODUCTION TRACKING */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6 animate-fade-in">
+            {pastOrders.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/90 space-y-4">
+                <Package className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="font-bold text-slate-800 text-base">
+                  {isAr ? 'لا توجد طلبات سابقة مسجلة' : 'No past orders recorded yet'}
+                </p>
+                <button
+                  onClick={onBackToShop}
+                  type="button"
+                  className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700 transition-colors cursor-pointer"
+                >
+                  {isAr ? 'تصفح المتجر وابدأ أول طلب' : 'Explore Shop & Place First Order'}
+                </button>
+              </div>
+            ) : (
+              pastOrders.map((ord, idx) => {
+                const isExpanded = expandedOrderId === ord.orderId;
+                return (
+                  <div
+                    key={ord.orderId}
+                    className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden transition-all"
+                  >
+                    {/* Order Summary Row */}
+                    <div
+                      onClick={() => setExpandedOrderId(isExpanded ? null : ord.orderId)}
+                      className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center font-mono font-bold text-sm shrink-0">
+                          #{idx + 1}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2.5">
+                            <span className="font-mono font-extrabold text-slate-900 text-base">
+                              {ord.orderId}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              {isAr ? 'جاري التصنيع' : 'In Production'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                            <span className="flex items-center gap-1 font-mono">
+                              <Clock className="w-3.5 h-3.5" />
+                              {ord.createdAt}
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            <span>
+                              {ord.items.length} {isAr ? 'منتج مخصص' : 'custom items'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0">
+                        <div className="text-start md:text-end">
+                          <span className="text-[11px] text-slate-400 block">{isAr ? 'إجمالي الطلب:' : 'Total:'}</span>
+                          <span className="font-extrabold text-base text-purple-700 font-mono">
+                            {ord.grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleWhatsAppTrack(ord);
+                            }}
+                            type="button"
+                            className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            title={isAr ? 'تتبع عبر واتساب' : 'Track on WhatsApp'}
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.print();
+                            }}
+                            type="button"
+                            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                            title={isAr ? 'طباعة الفاتورة' : 'Download Invoice'}
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expandable Order Details */}
+                    {isExpanded && (
+                      <div className="p-6 bg-slate-50/70 border-t border-slate-100 space-y-6 animate-fade-in">
+                        {/* Fabrication Tracking Pipeline */}
+                        <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                            {isAr ? 'مسار تجهيز الطلب في ورشة بغداد:' : 'Fabrication Status Pipeline:'}
+                          </h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                              ✓ 1. {isAr ? 'اعتماد البروفة' : 'Proof Approved'}
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-purple-50 text-purple-800 font-bold border border-purple-200 animate-pulse">
+                              ⚙️ 2. {isAr ? 'قص الليزر والتجميع' : 'Laser Fabrication'}
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-500">
+                              🔍 3. {isAr ? 'فحص الجودة' : 'Quality Check'}
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-500">
+                              🚚 4. {isAr ? 'الشحن والتسليم' : 'Dispatched'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Items in this Order */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                            {isAr ? 'المنتجات والمواصفات المصنعة:' : 'Fabricated Items in this Order:'}
+                          </h4>
+                          <div className="space-y-2">
+                            {ord.items.map((it) => (
+                              <div key={it.id} className="p-4 bg-white rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <img src={it.image} alt={it.titleAr} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                                  <div>
+                                    <h5 className="font-bold text-sm text-slate-900">{isAr ? it.titleAr : it.titleEn}</h5>
+                                    <div className="text-xs text-slate-600 space-y-0.5 mt-1">
+                                      {it.customOptions.customText && (
+                                        <p><strong>{isAr ? 'النص:' : 'Text:'}</strong> "{it.customOptions.customText}"</p>
+                                      )}
+                                      <p>
+                                        <strong>{isAr ? 'المقاس:' : 'Size:'}</strong> {isAr ? it.customOptions.dimensionLabelAr : it.customOptions.dimensionLabelEn}
+                                      </p>
+                                      <p>
+                                        <strong>{isAr ? 'الخامة:' : 'Material:'}</strong> {isAr ? it.customOptions.materialLabelAr : it.customOptions.materialLabelEn}
+                                      </p>
+                                      {it.customOptions.logoFileName && (
+                                        <p className="text-purple-700 font-mono text-[11px]">📎 {it.customOptions.logoFileName}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="text-start sm:text-end">
+                                  <span className="text-xs text-slate-500 block">
+                                    {it.quantity} {isAr ? 'قطع' : 'pcs'}
+                                  </span>
+                                  <span className="font-bold text-sm text-slate-900 font-mono">
+                                    {it.totalPrice.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Delivery Destination & Actions */}
+                        <div className="p-4 bg-white rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+                          <div>
+                            <span className="font-bold text-slate-900 block mb-0.5">{isAr ? 'عنوان الاستلام والتوصيل:' : 'Delivery Address:'}</span>
+                            <span>{ord.shipping.fullName} · {ord.shipping.phone} · {ord.shipping.address} ({ord.shipping.governorate})</span>
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 block mb-0.5">{isAr ? 'بوابة السداد:' : 'Payment:'}</span>
+                            <span className="font-mono text-purple-700 font-semibold">{ord.paymentDetails.gatewayNameAr} ({ord.paymentDetails.transactionId})</span>
+                          </div>
+                        </div>
+
+                        {/* Order Actions: Reorder and Invoice */}
+                        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadInvoice(ord);
+                            }}
+                            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Download className="w-4 h-4 text-slate-500" />
+                            <span>{isAr ? 'تحميل الفاتورة الضريبية (PDF)' : 'Download Invoice (PDF)'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReorder(ord);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Repeat className="w-4 h-4" />
+                            <span>{isAr ? 'إعادة طلب هذه المنتجات المخصصة' : 'Re-order this Custom Order'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: SAVED DESIGNS LIBRARY */}
+        {activeTab === 'designs' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-lg text-slate-900">
+                  {isAr ? 'مكتبة الشعارات والتصاميم المرفوعة' : 'Saved Logos & Vector Artworks'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {isAr ? 'يمكنك استخدام أي شعار محفوظ لإعادة الطلب بضغطة زر دون الحاجة لرفعه مجدداً' : 'Re-order custom products using previously uploaded vectors and assets'}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowUploadModal(true)}
+                type="button"
+                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isAr ? 'رفع تصميم جديد' : 'Upload Design'}</span>
+              </button>
+            </div>
+
+            {/* Designs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {savedDesigns.map((des) => (
+                <div
+                  key={des.id}
+                  className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4 hover:border-purple-300 transition-all"
+                >
+                  <div>
+                    {/* Thumbnail */}
+                    <div className="relative aspect-16/10 w-full rounded-2xl bg-slate-950 overflow-hidden mb-3">
+                      <img src={des.previewUrl} alt={des.titleAr} className="w-full h-full object-cover opacity-80" />
+                      <span className="absolute top-2.5 start-2.5 px-2 py-0.5 rounded bg-white/90 text-[10px] font-mono font-bold uppercase text-slate-900">
+                        {des.fileType}
+                      </span>
+                    </div>
+
+                    {editingDesignId === des.id ? (
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <input
+                          type="text"
+                          value={editingTitleText}
+                          onChange={(e) => setEditingTitleText(e.target.value)}
+                          className="flex-1 px-2 py-1 text-xs rounded-lg border border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editingTitleText.trim()) {
+                              renameSavedDesign(des.id, editingTitleText.trim());
+                            }
+                            setEditingDesignId(null);
+                          }}
+                          className="p-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          title={isAr ? 'حفظ الاسم' : 'Save'}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingDesignId(null)}
+                          className="p-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200"
+                          title={isAr ? 'إلغاء' : 'Cancel'}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                          {isAr ? des.titleAr : des.titleEn}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingDesignId(des.id);
+                            setEditingTitleText(isAr ? des.titleAr : des.titleEn);
+                          }}
+                          className="p-1 text-slate-400 hover:text-purple-600 transition-colors"
+                          title={isAr ? 'تعديل اسم التصميم' : 'Rename artwork'}
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-slate-500 space-y-0.5 mt-2 font-mono">
+                      <p>📎 {des.fileName}</p>
+                      <p className="text-[11px] text-slate-400">{des.fileSize} · {des.uploadedAt}</p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <button
+                      onClick={() => {
+                        if (des.productId && onOpenCustomizerWithProduct) {
+                          onOpenCustomizerWithProduct(des.productId);
+                        } else {
+                          onBackToShop();
+                        }
+                      }}
+                      type="button"
+                      className="px-3.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'اطلب تصنيع بهذا الشعار' : 'Re-order with this Logo'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => deleteSavedDesign(des.id)}
+                      type="button"
+                      className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                      title={isAr ? 'حذف من المكتبة' : 'Delete'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Upload Design Modal */}
+            {showUploadModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+                <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-base text-slate-900">
+                      {isAr ? 'رفع شعار أو تصميم جديد للمكتبة' : 'Upload New Design to Library'}
+                    </h4>
+                    <button onClick={() => setShowUploadModal(false)} type="button" className="p-1 text-slate-400 hover:text-slate-700">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAddDesignSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                        {isAr ? 'عنوان الشعار / اسم المشروع:' : 'Artwork Title:'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newDesignTitle}
+                        onChange={(e) => setNewDesignTitle(e.target.value)}
+                        placeholder={isAr ? 'مثال: شعار مطعم بغداد الجديد' : 'e.g. Restaurant Logo 2026'}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                        {isAr ? 'فئة المنتج المقترحة:' : 'Product Category:'}
+                      </label>
+                      <select
+                        value={newDesignCategory}
+                        onChange={(e) => setNewDesignCategory(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                      >
+                        <option value="led">{isAr ? 'لوحات وإضاءة LED' : 'LED Acrylic Signs'}</option>
+                        <option value="boxes">{isAr ? 'علب وتغليف فاخر' : 'Luxury Packaging'}</option>
+                        <option value="cards">{isAr ? 'كروت أعمال وبصمة' : 'Business Cards'}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                        {isAr ? 'اختيار الملف (SVG, AI, PDF, PNG):' : 'Select Artwork File:'}
+                      </label>
+                      <input
+                        type="file"
+                        required
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setUploadedFileName(file.name);
+                        }}
+                        className="w-full text-xs text-slate-600 file:me-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowUploadModal(false)}
+                        className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600"
+                      >
+                        {isAr ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700"
+                      >
+                        {isAr ? 'حفظ في المكتبة' : 'Save to Library'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: PROFILE MANAGEMENT & DEFAULT ADDRESSES */}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/90 shadow-xs max-w-2xl animate-fade-in space-y-6">
+            <div>
+              <h3 className="font-extrabold text-lg text-slate-900">
+                {isAr ? 'بيانات الحساب والعنوان الافتراضي' : 'Profile & Default Delivery Address'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {isAr ? 'يتم استخدام هذه البيانات تلقائياً لملء حقول الشحن والتواصل عبر واتساب' : 'Pre-fills your checkout details and WhatsApp communications'}
+              </p>
+            </div>
+
+            {profileSavedToast && (
+              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs border border-emerald-200 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{isAr ? 'تم حفظ التعديلات بنجاح!' : 'Profile updated successfully!'}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                  {isAr ? 'الاسم الكامل:' : 'Full Name:'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                  {isAr ? 'رقم الهاتف / واتساب:' : 'Phone / WhatsApp:'}
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                  {isAr ? 'المحافظة:' : 'Governorate:'}
+                </label>
+                <select
+                  value={editGovernorate}
+                  onChange={(e) => setEditGovernorate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  {governorates.map((gov) => (
+                    <option key={gov} value={gov}>
+                      {gov}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1">
+                  {isAr ? 'العنوان التفصيلي (المنطقة والشارع):' : 'Detailed Address in Iraq:'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="pt-3">
+                <button
+                  type="submit"
+                  className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-md"
+                >
+                  {isAr ? 'حفظ التعديلات' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
