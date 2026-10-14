@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Package, CreditCard, Gift, Award, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { Package, CreditCard, Gift, Award, ArrowRight, ArrowLeft, Check, Sparkles, BookOpen } from 'lucide-react';
+import { useContentStore } from '../../store/useContentStore';
 
 interface ServicesSectionProps {
   onOpenCustomizer: (productId?: string) => void;
@@ -9,6 +10,7 @@ interface ServicesSectionProps {
 export const ServicesSection: React.FC<ServicesSectionProps> = ({ onOpenCustomizer }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { setSelectedArticleId } = useContentStore();
 
   const services = [
     {
@@ -84,6 +86,15 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onOpenCustomiz
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
             {t('services.subtitle')}
           </p>
+          <div className="pt-1">
+            <button
+              onClick={() => setSelectedArticleId('art-services')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200 shadow-2xs transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>{isAr ? 'اقرأ المقال الكامل: تفاصيل مسارات التصنيع والتقنيات المستخدمة' : 'Read Full Editorial: Production Methods & Machinery'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Services Grid */}

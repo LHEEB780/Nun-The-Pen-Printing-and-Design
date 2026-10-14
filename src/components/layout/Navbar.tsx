@@ -58,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const navLinks = [
     { href: '#home', label: t('nav.home'), isShop: false },
+    { href: '#categories', label: isAr ? 'أقسام المنتجات' : 'Categories', isShop: false },
     { href: '#shop', label: isAr ? 'المتجر والتخصيص' : 'Shop & Customize', isShop: true },
     { href: '#services', label: t('nav.services'), isShop: false },
     { href: '#portfolio', label: t('nav.portfolio'), isShop: false },
@@ -76,26 +77,26 @@ export const Navbar: React.FC<NavbarProps> = ({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
-          {/* Brand Logo */}
+          {/* Official Brand Logo */}
           <button
             onClick={() => {
               onNavigate('home');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             type="button"
-            className="flex items-center gap-3 group text-slate-900 transition-opacity hover:opacity-95 text-start cursor-pointer"
+            className="flex flex-col items-center justify-center group text-slate-900 transition-transform hover:scale-105 cursor-pointer text-center py-0.5"
+            title={isAr ? 'نُون والقَلَم للطباعة والتصميم' : 'Noon & Pen Printing & Design'}
           >
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#87CEEB]/30 via-[#E6E6FA] to-purple-200 border border-purple-200/60 flex items-center justify-center text-purple-700 shadow-xs group-hover:scale-105 transition-transform">
-              <span className="font-bold text-xl leading-none">ن</span>
+            <div className="h-14 sm:h-16 w-auto flex items-center justify-center shrink-0">
+              <img
+                src="/images/noon_walqalam_logo.png"
+                alt="شعار نُون والقَلَم"
+                className="h-14 sm:h-16 w-auto object-contain filter drop-shadow-xs transition-transform group-hover:scale-105"
+              />
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-lg md:text-xl tracking-tight leading-snug text-slate-900">
-                {isAr ? 'نُون والقَلَم' : 'Noon & Pen'}
-              </span>
-              <span className="text-xs text-slate-500 font-normal">
-                {isAr ? 'للطباعة والتصميم الفاخر' : 'Printing & Bespoke Design'}
-              </span>
-            </div>
+            <span className="text-[10px] sm:text-xs font-black text-amber-950 tracking-tight mt-0.5 leading-tight">
+              {isAr ? 'للطباعة والتصميم' : 'Printing & Design'}
+            </span>
           </button>
 
           {/* Desktop Nav Links */}
@@ -117,22 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Action Tools */}
-          <div className="flex items-center gap-2.5">
-            {/* Admin Dashboard Quick Access Button */}
-            <button
-              onClick={() => onNavigate('admin')}
-              type="button"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                currentView === 'admin'
-                  ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
-                  : 'border-purple-300/80 bg-purple-50/80 hover:bg-purple-100 text-purple-900'
-              }`}
-              title={isAr ? 'لوحة تحكم الإدارة والموظفين (RBAC)' : 'Admin Dashboard (RBAC)'}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
-              <span className="hidden sm:inline">{isAr ? 'الإدارة (RBAC)' : 'Admin'}</span>
-            </button>
-
+          <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Language & Direction Toggle (RTL / LTR) */}
             <LanguageToggle variant="segmented" />
 

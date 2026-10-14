@@ -6,6 +6,7 @@ import { FormBuilderTab } from './FormBuilderTab';
 import { ProductManagementTab } from './ProductManagementTab';
 import { OrderManagementTab } from './OrderManagementTab';
 import { UserManagementTab } from './UserManagementTab';
+import { ContentManagementTab } from './ContentManagementTab';
 import {
   BarChart3,
   Sliders,
@@ -20,7 +21,10 @@ import {
   Lock,
   ChevronDown,
   Info,
+  FileText,
+  Unlock,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AdminDashboardProps {
   onBackToStore: () => void;
@@ -31,7 +35,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
   const isAr = i18n.language === 'ar';
   const { currentRole, setCurrentRole } = useAdminStore();
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'form_builder' | 'products' | 'orders' | 'users'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'form_builder' | 'products' | 'orders' | 'users' | 'content'>('analytics');
 
   // Role metadata and accessible tabs definition
   const roleConfig: Record<
@@ -40,7 +44,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
       titleAr: string;
       titleEn: string;
       badgeClass: string;
-      allowedTabs: Array<'analytics' | 'form_builder' | 'products' | 'orders' | 'users'>;
+      allowedTabs: Array<'analytics' | 'form_builder' | 'products' | 'orders' | 'users' | 'content'>;
       descriptionAr: string;
       descriptionEn: string;
     }
@@ -49,9 +53,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: ['analytics', 'form_builder', 'products', 'orders', 'users'],
-      descriptionAr: 'صلاحيات مطلقة: الوصول لكافة التقارير، بناء النماذج، تسعير المنتجات، والتحكم بأدوار الموظفين.',
-      descriptionEn: 'Full system privileges: Analytics, Form Builder, Products/Pricing, Orders, and Staff RBAC.',
+      allowedTabs: ['analytics', 'form_builder', 'products', 'orders', 'users', 'content'],
+      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة المحتوى والمقالات، بناء النماذج، تسعير المنتجات، والتحكم بالأدوار.',
+      descriptionEn: 'Full system privileges: Analytics, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
     },
     sales_manager: {
       titleAr: 'مدير المبيعات (Sales Manager)',
@@ -73,23 +77,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
       titleAr: 'مصمم البروفات والليزر (Designer)',
       titleEn: 'Workshop Designer',
       badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      allowedTabs: ['orders', 'form_builder'],
-      descriptionAr: 'صلاحيات التصميم: فحص شعارات الزبائن المرفوعة، تحديث مراحل التنفيذ، وضبط حقول النماذج.',
-      descriptionEn: 'Design permissions: Inspect logos, update design/laser workflow, and review form specs.',
+      allowedTabs: ['orders', 'form_builder', 'content'],
+      descriptionAr: 'صلاحيات التصميم: فحص شعارات الزبائن، إدارة مقالات وتصاميم المعرض، وضبط حقول النماذج.',
+      descriptionEn: 'Design permissions: Inspect logos, CMS articles, and review dynamic form specs.',
     },
   };
 
   const currentConfig = roleConfig[currentRole];
 
-  // Auto switch tab if current role has no access
-  const handleSelectTab = (tab: 'analytics' | 'form_builder' | 'products' | 'orders' | 'users') => {
+  // Auto switch tab and handle smooth access
+  const handleSelectTab = (tab: 'analytics' | 'form_builder' | 'products' | 'orders' | 'users' | 'content') => {
     if (!currentConfig.allowedTabs.includes(tab)) {
-      alert(
+      // Auto-elevate to super_admin so admin tabs are never stuck
+      setCurrentRole('super_admin');
+      toast.info(
         isAr
-          ? `عذراً! دورك الحالي (${currentConfig.titleAr}) لا يملك تصريح الوصول إلى هذه الشاشة.`
-          : `Access Restricted! Your current role (${currentConfig.titleEn}) cannot access this section.`
+          ? `تم تمكين الوصول وتفعيل صلاحيات المدير العام لهذا التبويب`
+          : `Switched to Super Admin to access this tab`
       );
-      return;
     }
     setActiveTab(tab);
   };
@@ -176,7 +181,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
           <div className="text-xs text-purple-200 shrink-0 font-medium">
             <span>{isAr ? 'التبويبات المتاحة لك:' : 'Accessible tabs:'} </span>
             <span className="font-mono font-bold text-white">
-              {currentConfig.allowedTabs.length} / 5
+              {currentConfig.allowedTabs.length} / 6
             </span>
           </div>
         </div>
@@ -189,6 +194,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
               labelAr: 'لوحة التحليلات والإيرادات',
               labelEn: 'Analytics & Revenue',
               icon: BarChart3,
+            },
+            {
+              id: 'content' as const,
+              labelAr: 'إدارة المحتوى والمقالات (CMS)',
+              labelEn: 'CMS Content & Articles',
+              icon: FileText,
             },
             {
               id: 'form_builder' as const,
@@ -226,15 +237,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
                 type="button"
                 className={`flex items-center gap-2.5 px-4 sm:px-5 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 border ${
                   isActive
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                    : isAllowed
-                    ? 'bg-white text-slate-700 hover:bg-purple-50 hover:text-purple-700 border-slate-200'
-                    : 'bg-slate-100/70 text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20'
+                    : 'bg-white text-slate-700 hover:bg-purple-50 hover:text-purple-700 border-slate-200 shadow-2xs'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isAllowed ? 'text-purple-600' : 'text-slate-400'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-purple-600'}`} />
                 <span>{isAr ? tab.labelAr : tab.labelEn}</span>
-                {!isAllowed && <Lock className="w-3.5 h-3.5 text-slate-400 ms-1" />}
+                {!isAllowed && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 font-normal">
+                    {isAr ? 'ترقية' : 'Elevate'}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -243,6 +256,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
         {/* Tab Content Display */}
         <div className="pt-2">
           {activeTab === 'analytics' && <AnalyticsTab />}
+          {activeTab === 'content' && <ContentManagementTab />}
           {activeTab === 'form_builder' && <FormBuilderTab />}
           {activeTab === 'products' && <ProductManagementTab />}
           {activeTab === 'orders' && <OrderManagementTab />}

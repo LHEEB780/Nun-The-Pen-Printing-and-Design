@@ -113,8 +113,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Header */}
         <div className="p-6 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
-              ن
+            <div className="w-10 h-10 rounded-xl bg-amber-50/80 border border-amber-200/60 p-1 flex items-center justify-center shrink-0">
+              <img
+                src="/images/noon_walqalam_logo.png"
+                alt="شعار نون والقلم"
+                className="w-full h-full object-contain filter drop-shadow-xs"
+              />
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900 leading-none">

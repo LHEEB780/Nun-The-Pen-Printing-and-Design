@@ -1,10 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck, Zap, Eye, Truck, Sparkles } from 'lucide-react';
+import { ShieldCheck, Zap, Eye, Truck, Sparkles, BookOpen } from 'lucide-react';
+import { useContentStore } from '../../store/useContentStore';
 
 export const WhyUsSection: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { setSelectedArticleId } = useContentStore();
 
   const reasons = [
     {
@@ -56,6 +58,15 @@ export const WhyUsSection: React.FC = () => {
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
             {t('whyUs.subtitle')}
           </p>
+          <div className="pt-2">
+            <button
+              onClick={() => setSelectedArticleId('art-why-us')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200 shadow-2xs transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>{isAr ? 'اقرأ المقال الكامل: معايير الحرفية الذهبية والضمانات الملكية' : 'Read Full Editorial: Golden Craft Standards & Guarantees'}</span>
+            </button>
+          </div>
         </div>
 
         {/* 4 Cards Grid */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem, DimensionOption, MaterialOption, LedOption } from '../../data/mockData';
 import { useCartStore } from '../../store/useCartStore';
+import { InteractiveAiDesignStudio } from './InteractiveAiDesignStudio';
 import { X, Upload, Check, Sparkles, Sliders, Image as ImageIcon, Lightbulb, Info } from 'lucide-react';
 
 interface CustomizerModalProps {
@@ -29,6 +30,7 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
   const [quantity, setQuantity] = useState<number>(1);
   const [notes, setNotes] = useState<string>('');
   const [isAddedSuccess, setIsAddedSuccess] = useState<boolean>(false);
+  const [modalMode, setModalMode] = useState<'ai_studio' | 'quick'>('ai_studio');
 
   // Sync initial product if passed
   useEffect(() => {
@@ -105,9 +107,9 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl border border-slate-200/80 flex flex-col my-auto animate-scale">
-        {/* Header */}
-        <div className="px-6 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+      <div className="relative bg-white rounded-3xl w-full max-w-6xl max-h-[94vh] overflow-hidden shadow-2xl border border-slate-200/80 flex flex-col my-auto animate-scale">
+        {/* Header with Title and Mode Switcher */}
+        <div className="px-6 py-4 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-purple-700">
               <Sparkles className="w-3.5 h-3.5" />
@@ -117,18 +119,76 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
               {t('customizer.subtitle')}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            type="button"
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center p-1 bg-slate-200/60 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setModalMode('ai_studio')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  modalMode === 'ai_studio'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>{isAr ? 'الاستوديو التفاعلي بالذكاء الاصطناعي' : 'AI Live Studio'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalMode('quick')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  modalMode === 'quick'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>{isAr ? 'النموذج السريع' : 'Quick Form'}</span>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              type="button"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Modal Body - 2 Columns (Form & Live Preview) */}
-        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {modalMode === 'ai_studio' ? (
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Product Switcher Bar */}
+            <div className="flex items-center justify-between flex-wrap gap-3 bg-purple-50/70 p-4 rounded-2xl border border-purple-200">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-700" />
+                <span className="text-xs font-bold text-purple-950">
+                  {isAr ? 'المنتج المختار للتخصيص:' : 'Selected Product:'}
+                </span>
+              </div>
+              <select
+                value={selectedProduct.id}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="px-4 py-2 rounded-xl border border-purple-300 text-xs sm:text-sm font-bold text-purple-900 bg-white shadow-xs cursor-pointer"
+              >
+                {PRODUCTS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {isAr ? p.titleAr : p.titleEn} - (${p.basePriceUSD || 20})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <InteractiveAiDesignStudio
+              product={selectedProduct}
+              onAddToCartSuccess={() => onClose()}
+            />
+          </div>
+        ) : (
+          /* Modal Body - 2 Columns (Form & Live Preview) */
+          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Controls Column (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
             {/* 1. Product Selection */}
@@ -425,7 +485,8 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
-  );
+  </div>
+);
 };

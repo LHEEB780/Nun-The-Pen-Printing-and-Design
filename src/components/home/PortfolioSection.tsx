@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PORTFOLIO_ITEMS, PortfolioItem } from '../../data/mockData';
-import { Maximize2, Sparkles, X, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Maximize2, Sparkles, X, Check, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
+import { useContentStore } from '../../store/useContentStore';
 
 interface PortfolioSectionProps {
   onOpenCustomizer: (productId?: string) => void;
@@ -10,6 +11,7 @@ interface PortfolioSectionProps {
 export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ onOpenCustomizer }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { setSelectedArticleId } = useContentStore();
 
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
@@ -43,6 +45,15 @@ export const PortfolioSection: React.FC<PortfolioSectionProps> = ({ onOpenCustom
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-xl">
               {t('portfolio.subtitle')}
             </p>
+            <div className="pt-1">
+              <button
+                onClick={() => setSelectedArticleId('art-portfolio')}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold border border-sky-200 shadow-2xs transition-all"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{isAr ? 'اقرأ دراسات الحالة وقصص نجاح المشاريع المنجزة' : 'Read Project Case Studies & Client Stories'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Filter Segmented Control Bar */}

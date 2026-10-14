@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
-import { SlidersHorizontal, Sparkles, Layers, Ruler, Palette, ArrowRight, ArrowLeft } from 'lucide-react';
+import { SlidersHorizontal, Sparkles, Layers, Ruler, Palette, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
+import { useContentStore } from '../../store/useContentStore';
 
 interface ShopSectionProps {
   onOpenCustomizer: (productId: string) => void;
@@ -16,6 +17,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { setSelectedArticleId } = useContentStore();
 
   return (
     <section id="shop" className="py-20 bg-white relative">
@@ -35,6 +37,15 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
                 ? 'كل قطعة نصنعها تخضع لخياراتك الخاصة. اختر المنتج، حدد الأبعاد والخامة والنصوص والملفات، واعرف السعر فورياً.'
                 : 'Products are not off-the-shelf. Configure your dimensions, materials, custom text, and branding for live quote estimation.'}
             </p>
+            <div className="pt-1">
+              <button
+                onClick={() => setSelectedArticleId('art-custom-products')}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200 shadow-2xs transition-all"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{isAr ? 'اقرأ المقال الكامل: كيف يعمل محرك التخصيص والمواصفات المتاحة' : 'Read Full Editorial: Customizer Engine & Options'}</span>
+              </button>
+            </div>
           </div>
 
           {onViewAllProducts && (

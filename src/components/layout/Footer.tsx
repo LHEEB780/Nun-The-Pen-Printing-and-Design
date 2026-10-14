@@ -1,11 +1,51 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, Mail, MapPin, Clock, ArrowUpRight, Sparkles, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ArrowUpRight, Sparkles, MessageCircle, BookOpen, ShieldAlert } from 'lucide-react';
 import { COMPANY_CONTACT } from '../../data/mockData';
+import { useContentStore, QuickLinkSectionKey } from '../../store/useContentStore';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin') => void;
+  onOpenCustomizer?: (productId?: string) => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { getArticleBySection, setSelectedArticleId } = useContentStore();
+
+  const quickLinksConfig: Array<{ key: QuickLinkSectionKey; defaultTitleAr: string; defaultTitleEn: string; href: string }> = [
+    { key: 'home', defaultTitleAr: 'الرئيسية', defaultTitleEn: 'Home', href: '#home' },
+    { key: 'services', defaultTitleAr: 'خدماتنا', defaultTitleEn: 'Our Services', href: '#services' },
+    { key: 'portfolio', defaultTitleAr: 'معرض الأعمال', defaultTitleEn: 'Portfolio', href: '#portfolio' },
+    { key: 'custom_products', defaultTitleAr: 'منتجات مخصصة', defaultTitleEn: 'Custom Products', href: '#shop' },
+    { key: 'why_us', defaultTitleAr: 'لماذا نون والقلم؟', defaultTitleEn: 'Why Noon & Pen?', href: '#why-us' },
+    { key: 'contact', defaultTitleAr: 'تواصل معنا', defaultTitleEn: 'Contact Us', href: '#contact' },
+  ];
+
+  const handleLinkClick = (key: QuickLinkSectionKey, href: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    const article = getArticleBySection(key);
+    if (article) {
+      setSelectedArticleId(article.id);
+    } else {
+      if (href === '#shop' && onNavigate) {
+        onNavigate('shop');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const el = document.querySelector(href);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        } else if (onNavigate) {
+          onNavigate('home');
+          setTimeout(() => {
+            const elem = document.querySelector(href);
+            if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+    }
+  };
 
   return (
     <footer className="bg-gradient-to-b from-white to-slate-50/90 text-slate-700 pt-16 pb-12 border-t border-purple-100/80 relative overflow-hidden">
@@ -24,15 +64,19 @@ export const Footer: React.FC = () => {
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#87CEEB]/40 via-[#E6E6FA] to-purple-200 border border-purple-200/60 flex items-center justify-center text-purple-700 font-bold text-xl shadow-xs">
-                ن
+              <div className="h-16 w-16 p-1 rounded-2xl bg-white/90 border border-amber-200/60 shadow-xs flex items-center justify-center shrink-0">
+                <img
+                  src="/images/noon_walqalam_logo.png"
+                  alt="شعار نُون والقَلَم"
+                  className="w-full h-full object-contain filter drop-shadow-xs"
+                />
               </div>
               <div>
                 <span className="font-bold text-lg text-slate-900 block leading-tight">
                   {isAr ? 'نُون والقَلَم' : 'Noon & Pen'}
                 </span>
-                <span className="text-[11px] text-slate-500 font-normal">
-                  {isAr ? 'للطباعة والتصميم الفاخر' : 'Printing & Bespoke Design'}
+                <span className="text-xs text-amber-900/90 font-bold block mt-0.5">
+                  {isAr ? 'للطباعة والتصميم' : 'Printing & Design'}
                 </span>
               </div>
             </div>
@@ -45,43 +89,41 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Links with CMS Articles Integration */}
           <div>
             <h4 className="text-slate-900 text-sm font-bold mb-4 tracking-wide flex items-center gap-2">
               <span className="w-1.5 h-3.5 bg-purple-600 rounded-full" />
               <span>{t('footer.quickLinks')}</span>
             </h4>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <a href="#home" className="text-slate-600 hover:text-purple-700 transition-colors">
-                  {t('nav.home')}
-                </a>
-              </li>
-              <li>
-                <a href="#services" className="text-slate-600 hover:text-purple-700 transition-colors">
-                  {t('nav.services')}
-                </a>
-              </li>
-              <li>
-                <a href="#portfolio" className="text-slate-600 hover:text-purple-700 transition-colors">
-                  {t('nav.portfolio')}
-                </a>
-              </li>
-              <li>
-                <a href="#shop" className="text-slate-600 hover:text-purple-700 transition-colors">
-                  {t('nav.shop')}
-                </a>
-              </li>
-              <li>
-                <a href="#why-us" className="text-slate-600 hover:text-purple-700 transition-colors">
-                  {t('nav.whyUs')}
-                </a>
-              </li>
-              <li>
-                <a href="#contact" className="text-slate-600 hover:text-purple-700 transition-colors">
-                  {t('nav.contact')}
-                </a>
-              </li>
+            <ul className="space-y-2 text-sm">
+              {quickLinksConfig.map((link) => {
+                const article = getArticleBySection(link.key);
+                const displayTitle = article
+                  ? isAr
+                    ? article.titleAr.split('–')[0].trim() || link.defaultTitleAr
+                    : article.titleEn.split('–')[0].trim() || link.defaultTitleEn
+                  : isAr
+                  ? link.defaultTitleAr
+                  : link.defaultTitleEn;
+
+                return (
+                  <li key={link.key}>
+                    <button
+                      onClick={(e) => handleLinkClick(link.key, link.href, e)}
+                      className="group flex items-center justify-between w-full text-start py-1 text-slate-600 hover:text-purple-700 transition-colors"
+                      title={isAr ? `قراءة مقال وتفاصيل: ${displayTitle}` : `Read article & details: ${displayTitle}`}
+                    >
+                      <span className="font-medium group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform">
+                        {displayTitle}
+                      </span>
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-purple-600 flex items-center gap-0.5">
+                        <BookOpen className="w-3 h-3" />
+                        <span className="text-[10px]">{isAr ? 'مقال' : 'Article'}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -92,30 +134,35 @@ export const Footer: React.FC = () => {
               <span>{t('footer.categories')}</span>
             </h4>
             <ul className="space-y-2 text-xs text-slate-600">
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                <span>{isAr ? 'لوحات أكريليك مضيئة LED' : '3D LED Acrylic Signs'}</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                <span>{isAr ? 'علب كرتون مقوى فاخرة (Rigid Boxes)' : 'Rigid Gift Box Packaging'}</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                <span>{isAr ? 'كروت أعمال وبصمة حرارية' : 'Hot-Foil Business Cards'}</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                <span>{isAr ? 'لوحات بورتريه فيكتور مخصصة' : 'Custom Vector Portrait Lamps'}</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                <span>{isAr ? 'دروع تذكارية وتوثيق الزفاف' : 'Commemorative Wedding Plaques'}</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                <span>{isAr ? 'هدايا الشركات ودروع التكريم' : 'Executive Corporate Awards'}</span>
-              </li>
+              {[
+                { labelAr: 'لوحات أكريليك مضيئة LED', labelEn: '3D LED Acrylic Signs', catId: 'led' },
+                { labelAr: 'علب كرتون مقوى فاخرة (Rigid Boxes)', labelEn: 'Rigid Gift Box Packaging', catId: 'boxes' },
+                { labelAr: 'كروت أعمال وبصمة حرارية', labelEn: 'Hot-Foil Business Cards', catId: 'cards' },
+                { labelAr: 'لوحات بورتريه فيكتور مخصصة', labelEn: 'Custom Vector Portrait Lamps', catId: 'portraits' },
+                { labelAr: 'دروع تذكارية وتوثيق الزفاف', labelEn: 'Commemorative Wedding Plaques', catId: 'weddings' },
+                { labelAr: 'هدايا الشركات ودروع التكريم', labelEn: 'Executive Corporate Awards', catId: 'led' },
+              ].map((item, idx) => (
+                <li key={idx}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onNavigate) {
+                        onNavigate('shop');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } else {
+                        const el = document.querySelector('#categories') || document.querySelector('#shop');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="flex items-center gap-2 text-slate-600 hover:text-purple-700 transition-colors py-0.5 text-start cursor-pointer w-full group"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:scale-125 transition-transform" />
+                    <span className="group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform">
+                      {isAr ? item.labelAr : item.labelEn}
+                    </span>
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -163,8 +210,25 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>{t('footer.rights')}</p>
+
+          {/* Admin Dashboard Access (Moved to bottom of the website as requested) */}
+          {onNavigate && (
+            <button
+              onClick={() => {
+                onNavigate('admin');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              type="button"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-purple-200/90 bg-white hover:bg-purple-50 text-purple-900 text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+              title={isAr ? 'لوحة تحكم الإدارة والموظفين (RBAC)' : 'Admin Dashboard (RBAC)'}
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
+              <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard (RBAC)'}</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1.5 text-slate-500 font-medium">
             <span>{t('footer.locationNotice')}</span>
           </div>

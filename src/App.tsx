@@ -10,6 +10,7 @@ import { HeroSection } from './components/home/HeroSection';
 import { ServicesSection } from './components/home/ServicesSection';
 import { PortfolioSection } from './components/home/PortfolioSection';
 import { ShopSection } from './components/home/ShopSection';
+import { CategoryShowcaseSection } from './components/home/CategoryShowcaseSection';
 import { WhyUsSection } from './components/home/WhyUsSection';
 import { TestimonialsSection } from './components/home/TestimonialsSection';
 import { ContactSection } from './components/contact/ContactSection';
@@ -23,6 +24,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AuthModal } from './components/auth/AuthModal';
 import { CustomizerModal } from './components/customizer/CustomizerModal';
 import { CartDrawer } from './components/cart/CartDrawer';
+import { ArticleDetailModal } from './components/article/ArticleDetailModal';
 import { MessageCircle } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { COMPANY_CONTACT } from './data/mockData';
@@ -96,9 +98,15 @@ export default function App() {
             <PortfolioSection
               onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
             />
+            <CategoryShowcaseSection
+              onSelectCategory={() => handleNavigate('shop')}
+              onSelectProduct={handleSelectProduct}
+              onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
+              onViewAllProducts={() => handleNavigate('shop')}
+            />
             <ShopSection
               onSelectProduct={handleSelectProduct}
-              onOpenCustomizer={handleSelectProduct}
+              onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
               onViewAllProducts={() => handleNavigate('shop')}
             />
             <WhyUsSection />
@@ -152,7 +160,10 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer
+        onNavigate={handleNavigate}
+        onOpenCustomizer={handleOpenCustomizer}
+      />
 
       {/* Interactive Quick Customizer Modal */}
       <CustomizerModal
@@ -167,6 +178,13 @@ export default function App() {
           setCurrentView('checkout');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+      />
+
+      {/* Full In-Depth Article Reader Modal for Quick Links & Knowledge Base */}
+      <ArticleDetailModal
+        onOpenCustomizer={handleOpenCustomizer}
+        onNavigateToShop={() => handleNavigate('shop')}
+        onNavigateToContact={() => handleNavigate('home')}
       />
 
       {/* User Authentication Modal (Login / Sign Up / Forgot Password) */}

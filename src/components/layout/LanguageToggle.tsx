@@ -16,7 +16,7 @@ interface LanguageToggleProps {
 export const LanguageToggle: React.FC<LanguageToggleProps> = ({
   variant = 'segmented',
   className = '',
-  showIcon = true,
+  showIcon = false,
 }) => {
   const { i18n } = useTranslation();
   const currentLang = (i18n.language || 'ar').startsWith('en') ? 'en' : 'ar';
@@ -139,50 +139,46 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
     );
   }
 
-  // Segmented Pill Variant (Default for Desktop Navbar)
+  // Segmented Pill Variant (Default for Desktop Navbar) - Perfectly Equal & Compact (No Globe Icon)
   return (
     <div
-      className={`relative inline-flex items-center bg-slate-100/90 hover:bg-slate-200/70 p-0.5 rounded-xl border border-slate-200/90 shadow-2xs transition-colors ${className}`}
+      className={`relative inline-flex items-center bg-slate-100/90 hover:bg-slate-200/60 p-0.5 sm:p-1 rounded-xl border border-slate-200/90 shadow-2xs transition-colors ${className}`}
       role="radiogroup"
       aria-label="Language and direction switch"
     >
-      {/* Arabic Button */}
-      <button
-        type="button"
-        onClick={() => switchLanguage('ar')}
-        role="radio"
-        aria-checked={isArabic}
-        className={`relative z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
-          isArabic
-            ? 'bg-white text-purple-900 shadow-xs border border-purple-100 font-black'
-            : 'text-slate-600 hover:text-slate-900'
-        }`}
-        title="التحويل إلى اللغة العربية (اتجاه RTL)"
-      >
-        {showIcon && isArabic && (
-          <Globe className="w-3 h-3 text-purple-600 animate-pulse" />
-        )}
-        <span>عربي</span>
-      </button>
+      <div className="grid grid-cols-2 gap-1 w-24 sm:w-28">
+        {/* Arabic Button */}
+        <button
+          type="button"
+          onClick={() => switchLanguage('ar')}
+          role="radio"
+          aria-checked={isArabic}
+          className={`h-7 w-full flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+            isArabic
+              ? 'bg-white text-purple-900 shadow-xs border border-purple-200/70 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+          title="التحويل إلى اللغة العربية (اتجاه RTL)"
+        >
+          <span>عربي</span>
+        </button>
 
-      {/* English Button */}
-      <button
-        type="button"
-        onClick={() => switchLanguage('en')}
-        role="radio"
-        aria-checked={!isArabic}
-        className={`relative z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
-          !isArabic
-            ? 'bg-white text-purple-900 shadow-xs border border-purple-100 font-black'
-            : 'text-slate-600 hover:text-slate-900'
-        }`}
-        title="Switch to English (LTR layout)"
-      >
-        {showIcon && !isArabic && (
-          <Globe className="w-3 h-3 text-purple-600 animate-pulse" />
-        )}
-        <span>EN</span>
-      </button>
+        {/* English Button */}
+        <button
+          type="button"
+          onClick={() => switchLanguage('en')}
+          role="radio"
+          aria-checked={!isArabic}
+          className={`h-7 w-full flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+            !isArabic
+              ? 'bg-white text-purple-900 shadow-xs border border-purple-200/70 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+          title="Switch to English (LTR layout)"
+        >
+          <span>English</span>
+        </button>
+      </div>
     </div>
   );
 };

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, Mail, MapPin, Send, CheckCircle2, MessageSquare, Clock } from 'lucide-react';
+import { Phone, Mail, MapPin, Send, CheckCircle2, MessageSquare, Clock, BookOpen } from 'lucide-react';
 import { COMPANY_CONTACT } from '../../data/mockData';
+import { useContentStore } from '../../store/useContentStore';
 
 export const ContactSection: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { setSelectedArticleId } = useContentStore();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,6 +48,15 @@ export const ContactSection: React.FC = () => {
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
             {t('contact.subtitle')}
           </p>
+          <div className="pt-1">
+            <button
+              onClick={() => setSelectedArticleId('art-contact')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200 shadow-2xs transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>{isAr ? 'اقرأ المقال الكامل: دليل الاستشارات والتواصل وزيارة الورشة' : 'Read Full Guide: Consultations, Quotations & Studio Visits'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
