@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
+import { useAdminStore } from '../../store/useAdminStore';
 import {
   Search,
   Sparkles,
@@ -26,41 +27,43 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const adminProducts = useAdminStore((state) => state.adminProducts);
+  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc'>('default');
 
   const categories = [
-    { id: 'all', labelAr: 'جميع المنتجات', labelEn: 'All Products', count: PRODUCTS.length },
+    { id: 'all', labelAr: 'جميع المنتجات', labelEn: 'All Products', count: productsList.length },
     {
       id: 'led',
       labelAr: 'لوحات ومجسمات LED',
       labelEn: 'LED Signs',
-      count: PRODUCTS.filter((p) => p.category === 'led').length,
+      count: productsList.filter((p) => p.category === 'led').length,
     },
     {
       id: 'boxes',
       labelAr: 'علب وتغليف كارتوني',
       labelEn: 'Cardboard Boxes',
-      count: PRODUCTS.filter((p) => p.category === 'boxes').length,
+      count: productsList.filter((p) => p.category === 'boxes').length,
     },
     {
       id: 'cards',
       labelAr: 'كروت أعمال وبصمة حرارية',
       labelEn: 'Business Cards',
-      count: PRODUCTS.filter((p) => p.category === 'cards').length,
+      count: productsList.filter((p) => p.category === 'cards').length,
     },
     {
       id: 'portraits',
       labelAr: 'هدايا وبورتريه شخصي',
       labelEn: 'Personal Gifts',
-      count: PRODUCTS.filter((p) => p.category === 'portraits' || p.category === 'weddings').length,
+      count: productsList.filter((p) => p.category === 'portraits' || p.category === 'weddings').length,
     },
   ];
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((item) => {
+    return productsList.filter((item) => {
       let matchesCategory = false;
       if (selectedCategory === 'all') {
         matchesCategory = true;

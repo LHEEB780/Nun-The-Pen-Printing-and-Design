@@ -64,6 +64,25 @@ export interface ShippingInfo {
 
 export type PaymentMethod = 'zaincash' | 'fib' | 'cod' | 'stripe' | 'paypal';
 
+export type ManufacturingStatus =
+  | 'under_review'        // قيد المراجعة
+  | 'designing'           // قيد التصميم
+  | 'printing'            // في المطبعة
+  | 'ready_for_shipping'  // جاهز للشحن
+  | 'delivered';          // تم التسليم
+
+export interface ManufacturingStageLog {
+  stage: ManufacturingStatus;
+  timestamp: string;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  artisanName?: string;
+  stationName?: string;
+  checklist?: string[];
+}
+
 export interface OrderRecord {
   orderId: string;
   createdAt: string;
@@ -79,6 +98,11 @@ export interface OrderRecord {
   subtotal: number;
   shippingCost: number;
   grandTotal: number;
+  manufacturingStatus?: ManufacturingStatus;
+  manufacturingStepIndex?: number;
+  estimatedDelivery?: string;
+  stageLogs?: ManufacturingStageLog[];
+  workshopNotes?: string;
 }
 
 interface CartStore {

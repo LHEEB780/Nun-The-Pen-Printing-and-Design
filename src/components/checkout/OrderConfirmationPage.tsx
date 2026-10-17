@@ -259,6 +259,37 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({
             </div>
           </div>
 
+          {/* Direct WhatsApp Transmission Button */}
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Send className="w-5 h-5 fill-white/20" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-emerald-950">
+                  {isAr ? 'أرسل نسخة فورية من طلبك عبر واتساب' : 'Send Instant Order Copy via WhatsApp'}
+                </p>
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  {isAr ? 'للتواصل السريع وتلقي بروفة التصميم الرقمية من كادر نون والقلم' : 'For fast communication and receiving your digital proof'}
+                </p>
+              </div>
+            </div>
+
+            <a
+              href={`https://wa.me/9647800000000?text=${encodeURIComponent(
+                isAr
+                  ? `مرحباً استوديو نون والقلم 🌟\nتم تثبيت طلبي بنجاح برقم: *${order.orderId}*\nالاسم: ${order.shipping.fullName}\nالهاتف: ${order.shipping.phone}\nالعنوان: ${order.shipping.governorate} - ${order.shipping.address}\nإجمالي المبلغ: ${order.grandTotal.toLocaleString()} د.ع\nالمنتجات:\n${order.items.map(it => `- ${it.titleAr} (${it.quantity} قطعة)`).join('\n')}\nأرجو إرسال بروفة التصميم للاعتماد السريع.`
+                  : `Hello Noon & Pen 🌟\nOrder placed successfully: *${order.orderId}*\nCustomer: ${order.shipping.fullName}.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-colors flex items-center gap-2 shrink-0 shadow-md cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              <span>{isAr ? 'إرسال نسخة الطلب لواتساب 💬' : 'Send Copy to WhatsApp'}</span>
+            </a>
+          </div>
+
           {/* Return Links */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
             <button

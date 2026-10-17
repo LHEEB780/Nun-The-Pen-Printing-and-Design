@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore, SavedDesign } from '../../store/useAuthStore';
-import { OrderRecord, useCartStore } from '../../store/useCartStore';
+import { OrderRecord, ManufacturingStatus, useCartStore } from '../../store/useCartStore';
+import { OrderManufacturingTracker, MANUFACTURING_STAGES } from './OrderManufacturingTracker';
 import {
   User,
   Package,
@@ -31,6 +32,8 @@ import {
   Download,
   Edit2,
   Check,
+  MessageCircle,
+  Maximize2,
 } from 'lucide-react';
 
 interface CustomerDashboardProps {
@@ -48,6 +51,11 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
     user,
     pastOrders,
     savedDesigns,
+    digitalProofs,
+    approveDigitalProof,
+    requestProofRevision,
+    hasProofNotification,
+    dismissProofNotification,
     updateProfile,
     logout,
     deleteSavedDesign,
@@ -56,9 +64,16 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   } = useAuthStore();
 
   const { addItem } = useCartStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'designs' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'proofs' | 'orders' | 'designs' | 'profile'>('overview');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(pastOrders[0]?.orderId || null);
   const [reorderSuccessToast, setReorderSuccessToast] = useState(false);
+  const [selectedProofPreview, setSelectedProofPreview] = useState<string | null>(null);
+  const [activeRevisionId, setActiveRevisionId] = useState<string | null>(null);
+  const [revisionComment, setRevisionComment] = useState<string>('');
+  const [approvalToast, setApprovalToast] = useState<string | null>(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | ManufacturingStatus>('all');
+
+  const pendingProofsCount = digitalProofs.filter((p) => p.status === 'pending_approval').length;
 
   // Rename design state
   const [editingDesignId, setEditingDesignId] = useState<string | null>(null);
@@ -325,6 +340,76 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           </div>
         )}
 
+        {/* Top Design Proof Alert Banner (واشعار في أعلى حساب للتنبيه) */}
+        {(pendingProofsCount > 0 || hasProofNotification) && (
+          <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-600 via-amber-700 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-scale border border-amber-500/40">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/30 border border-amber-400/40 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                🔔
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-sm sm:text-base">
+                    {isAr ? 'تنبيه عاجل: بروفة التصميم الخاصة بطلبك جاهزة للاعتماد!' : 'Alert: Design proof is ready for approval!'}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
+                    {isAr ? 'إجراء مطلوب' : 'Action Required'}
+                  </span>
+                </div>
+                <p className="text-xs text-white/90 mt-1 leading-relaxed">
+                  {isAr
+                    ? 'قام مهندسو وخطاطو نُون والقَلَم بإعداد مسودة التصميم وأرسلوا نسخة إلى حسابك هنا ونسخة على واتساب للتواصل السريع. يرجى معاينتها واعتمادها للبدء بالتصنيع الفوري.'
+                    : 'Our craft artisans prepared your digital proof and sent a copy to your account and WhatsApp. Please review and approve to begin production.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('proofs');
+                  dismissProofNotification();
+                }}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                {isAr ? 'معاينة واعتماد التصميم الآن 🎨' : 'Review Design Proof Now'}
+              </button>
+
+              <a
+                href={`https://wa.me/9647800000000?text=${encodeURIComponent(
+                  isAr
+                    ? 'مرحباً استوديو نون والقلم، بخصوص بروفة التصميم المرسلة لحسابي أود متابعتها معكم واعتمادها.'
+                    : 'Hello Noon & Pen, regarding the design proof sent to my account.'
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 text-xs font-bold"
+                title={isAr ? 'تواصل فوري عبر واتساب' : 'WhatsApp'}
+              >
+                <Phone className="w-4 h-4" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Approval Success Toast notification */}
+        {approvalToast && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-lg animate-fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span>{approvalToast}</span>
+            </div>
+            <button
+              onClick={() => setApprovalToast(null)}
+              className="p-1 text-white/80 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Dashboard Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-slate-200 mb-8 overflow-x-auto pb-1 no-scrollbar">
           <button
@@ -338,6 +423,32 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           >
             <LayoutDashboard className="w-4 h-4" />
             <span>{isAr ? 'نظرة عامة والنشاط' : 'Overview & Activity'}</span>
+          </button>
+
+          {/* Dedicated Tab: Digital Proofs */}
+          <button
+            onClick={() => {
+              setActiveTab('proofs');
+              dismissProofNotification();
+            }}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'proofs'
+                ? 'border-amber-600 text-amber-800 bg-amber-50/50 rounded-t-xl'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <span>{isAr ? 'بروفات التصاميم الرقمية' : 'Digital Proofs'}</span>
+            {pendingProofsCount > 0 ? (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black animate-pulse">
+                {pendingProofsCount} {isAr ? 'بانتظار الاعتماد' : 'Pending'}
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono">
+                {digitalProofs.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -447,15 +558,47 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               </div>
             </div>
 
+            {/* FEATURED: Live Manufacturing Pipeline Spotlight for Latest Order */}
+            {pastOrders[0] && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>{isAr ? 'مسار تصنيع طلبك النشط (تتبع بصري وتفاعلي مباشر)' : 'Live Active Order Manufacturing Timeline'}</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {isAr
+                        ? 'متابعة حية لمراحل تصنيع طلبك في ورشتنا: قيد المراجعة، قيد التصميم، في المطبعة، وجاهز للشحن'
+                        : 'Real-time interactive tracking across all milestones: Under Review, Designing, In Printing, and Ready for Shipping'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('orders')}
+                    type="button"
+                    className="text-xs font-bold text-purple-700 hover:text-purple-800 hover:underline cursor-pointer"
+                  >
+                    {isAr ? 'عرض كافة الطلبات ←' : 'View all orders →'}
+                  </button>
+                </div>
+
+                <OrderManufacturingTracker
+                  order={pastOrders[0]}
+                  variant="spotlight"
+                  allowInteractiveSimulation={true}
+                />
+              </div>
+            )}
+
             {/* Recent Orders Spotlight */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-extrabold text-lg text-slate-900">
-                    {isAr ? 'أحدث الطلبات وحالة التصنيع الحالية' : 'Recent Orders & Live Status'}
+                    {isAr ? 'كافة الطلبات المسجلة وحالة التصنيع' : 'All Orders & Fabrication Status'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    {isAr ? 'نظرة سريعة على المنتجات التي تم إرسالها لخط الإنتاج' : 'Quick view of products currently queued or in fabrication'}
+                    {isAr ? 'نظرة سريعة على كافة طلباتك ومراحلها الفنية في خطوط الإنتاج' : 'Quick overview of custom products in production queues'}
                   </p>
                 </div>
 
@@ -468,64 +611,389 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pastOrders.slice(0, 2).map((ord) => (
-                  <div
-                    key={ord.orderId}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 transition-all bg-slate-50/50 space-y-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-sm text-slate-900">{ord.orderId}</span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                        {isAr ? 'جاري التصنيع' : 'In Production'}
-                      </span>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pastOrders.map((ord) => {
+                  const currentStage =
+                    MANUFACTURING_STAGES.find((s) => s.id === (ord.manufacturingStatus || 'under_review')) ||
+                    MANUFACTURING_STAGES[0];
+                  const StageIcon = currentStage.icon;
 
-                    <div className="space-y-2">
-                      {ord.items.map((it) => (
-                        <div key={it.id} className="flex items-center gap-3">
-                          <img src={it.image} alt={it.titleAr} className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <h5 className="font-bold text-xs text-slate-900 truncate">{isAr ? it.titleAr : it.titleEn}</h5>
-                            <p className="text-[11px] text-slate-500 font-mono">
-                              {it.quantity} {isAr ? 'قطع' : 'pcs'} · {it.totalPrice.toLocaleString()} IQD
-                            </p>
-                          </div>
+                  return (
+                    <div
+                      key={ord.orderId}
+                      className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 transition-all bg-slate-50/50 space-y-4 flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono font-bold text-sm text-slate-900">{ord.orderId}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center gap-1 shadow-2xs ${currentStage.badgeBg} ${currentStage.badgeText}`}>
+                            <StageIcon className="w-3 h-3" />
+                            <span>{isAr ? currentStage.shortAr : currentStage.shortEn}</span>
+                          </span>
                         </div>
-                      ))}
-                    </div>
 
-                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
-                      <span className="text-slate-500">{ord.createdAt}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleWhatsAppTrack(ord)}
-                          type="button"
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>{isAr ? 'تتبع' : 'Track'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleReorder(ord)}
-                          type="button"
-                          className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 transition-colors flex items-center gap-1 cursor-pointer"
-                        >
-                          <Repeat className="w-3.5 h-3.5" />
-                          <span>{isAr ? 'إعادة طلب' : 'Re-order'}</span>
-                        </button>
+                        {/* Compact Progress Bar */}
+                        <OrderManufacturingTracker order={ord} variant="compact" />
+
+                        <div className="space-y-2 pt-1">
+                          {ord.items.map((it) => (
+                            <div key={it.id} className="flex items-center gap-2.5">
+                              <img src={it.image} alt={it.titleAr} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <h5 className="font-bold text-xs text-slate-900 truncate">{isAr ? it.titleAr : it.titleEn}</h5>
+                                <p className="text-[11px] text-slate-500 font-mono">
+                                  {it.quantity} {isAr ? 'قطع' : 'pcs'} · {it.totalPrice.toLocaleString()} IQD
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                        <span className="text-slate-400 font-mono text-[11px]">{ord.createdAt.split(' ')[0]}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setActiveTab('orders');
+                              setExpandedOrderId(ord.orderId);
+                            }}
+                            type="button"
+                            className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>{isAr ? 'تفاصيل المسار' : 'Track'}</span>
+                          </button>
+                          <button
+                            onClick={() => handleWhatsAppTrack(ord)}
+                            type="button"
+                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+                            title={isAr ? 'تتبع واتساب' : 'WhatsApp'}
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB: DIGITAL DESIGN PROOFS (بروفات التصاميم الرقمية) */}
+        {activeTab === 'proofs' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Explanatory Header */}
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>{isAr ? 'قسم بروفات التصاميم الرقمية والاعتماد' : 'Digital Proof Review & Approval Studio'}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-1">
+                  {isAr ? 'بروفات التصاميم المرسلة لحسابك من ورشتنا' : 'Design Proofs Sent to Your Account'}
+                </h3>
+                <p className="text-xs text-slate-600 mt-1.5 max-w-2xl leading-relaxed">
+                  {isAr
+                    ? 'تصميم المنتج من اختصاص كادر نُون والقَلَم: بعد تقديم طلبك ورفع بياناتك، يقوم خطاطونا ومهندسونا بإعداد مسودة التصميم وإرسال نسخة هنا لحسابك مع إشعار تنبيهي بأعلى الموقع، بالإضافة لإرسال نسخة على واتساب للاعتماد السريع قبل بدء التصنيع والقص.'
+                    : 'Bespoke design is handcrafted by Noon & Pen artisans: review your digital proof here, approve for production, or request adjustments before precision fabrication starts.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`https://wa.me/9647800000000?text=${encodeURIComponent(isAr ? 'مرحباً استوديو نون والقلم، أود الاستفسار عن حالة بروفة التصميم الخاصة بطلبي.' : 'Hello Noon & Pen, inquiry regarding my design proof.')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+                >
+                  <MessageCircle className="w-4 h-4 fill-white/20" />
+                  <span>{isAr ? 'مراسلة الورشة عبر واتساب' : 'Chat via WhatsApp'}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Proofs List */}
+            {digitalProofs.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/90 space-y-4">
+                <Sparkles className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="font-bold text-slate-800 text-base">
+                  {isAr ? 'لا توجد بروفات تصاميم مسجلة حالياً' : 'No design proofs recorded yet'}
+                </p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  {isAr
+                    ? 'عندما تطلب أي منتج وترفع بياناتك، سيقوم فريق التصميم بإعداد البروفة وإرسالها مباشرة إلى هذا القسم.'
+                    : 'When you place an order with your data, our craft engineers will upload your digital proof directly here.'}
+                </p>
+                <button
+                  onClick={onBackToShop}
+                  type="button"
+                  className="px-6 py-2.5 rounded-xl bg-amber-900 text-white font-bold text-xs hover:bg-amber-800 transition-colors cursor-pointer"
+                >
+                  {isAr ? 'تصفح المنتجات وبدء طلب جديد' : 'Browse Products'}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {digitalProofs.map((proof) => {
+                  const isPending = proof.status === 'pending_approval';
+                  const isApproved = proof.status === 'approved';
+                  const isRevision = proof.status === 'revision_requested';
+
+                  return (
+                    <div
+                      key={proof.id}
+                      className={`bg-white rounded-3xl border shadow-sm overflow-hidden flex flex-col justify-between transition-all ${
+                        isPending
+                          ? 'border-amber-400/80 ring-2 ring-amber-400/20 shadow-md'
+                          : 'border-slate-200/90'
+                      }`}
+                    >
+                      <div>
+                        {/* Proof Image Box */}
+                        <div className="relative aspect-16/10 bg-slate-950 overflow-hidden group select-none">
+                          <img
+                            src={proof.previewUrl}
+                            alt={isAr ? proof.productTitleAr : proof.productTitleEn}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-zoom-in"
+                            onClick={() => setSelectedProofPreview(proof.previewUrl)}
+                          />
+
+                          {/* Status Badge */}
+                          <div className="absolute top-3.5 start-3.5">
+                            {isPending && (
+                              <span className="px-3 py-1 rounded-full bg-amber-500 text-slate-950 text-xs font-black shadow-md flex items-center gap-1.5 animate-pulse">
+                                <span>⏳</span>
+                                <span>{isAr ? 'بانتظار موافقتك للاعتماد' : 'Pending Your Approval'}</span>
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-black shadow-md flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{isAr ? 'معتمد للتصنيع الفوري' : 'Approved for Production'}</span>
+                              </span>
+                            )}
+                            {isRevision && (
+                              <span className="px-3 py-1 rounded-full bg-sky-600 text-white text-xs font-black shadow-md flex items-center gap-1.5">
+                                <span>✏️</span>
+                                <span>{isAr ? 'جاري تنفيذ التعديلات المطلوبة' : 'Revision in Progress'}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Fullscreen Button */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProofPreview(proof.previewUrl)}
+                            className="absolute top-3.5 end-3.5 p-2 rounded-xl bg-slate-950/70 backdrop-blur-md text-white hover:text-amber-300 transition-colors cursor-pointer border border-white/20"
+                            title={isAr ? 'معاينة ملء الشاشة' : 'Fullscreen'}
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                          </button>
+
+                          {/* Order ID Pill */}
+                          <div className="absolute bottom-3 start-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-amber-300 text-xs font-mono font-bold">
+                            #{proof.orderId}
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        <div className="p-5 space-y-3.5">
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="font-extrabold text-base text-slate-900 line-clamp-1">
+                                {isAr ? proof.productTitleAr : proof.productTitleEn}
+                              </h4>
+                              <span className="text-[11px] text-slate-400 font-mono shrink-0">
+                                {proof.createdAt}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-600 mt-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-medium">
+                              <strong className="text-slate-800 block mb-0.5">{isAr ? 'المواصفات والأبعاد المعتمدة:' : 'Specs:'}</strong>
+                              {isAr ? proof.specsAr : proof.specsEn}
+                            </p>
+
+                            {proof.clientNotes && (
+                              <p className="text-xs text-amber-900 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200 mt-2 font-medium">
+                                <strong className="block mb-0.5">{isAr ? 'ملاحظات وتعديلات العميل:' : 'Client Notes:'}</strong>
+                                {proof.clientNotes}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Inline revision form */}
+                          {activeRevisionId === proof.id && (
+                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 animate-scale">
+                              <label className="text-xs font-bold text-slate-800 block">
+                                {isAr ? 'اكتب التعديلات المطلوبة على البروفة بالتفصيل:' : 'Specify required adjustments:'}
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={revisionComment}
+                                onChange={(e) => setRevisionComment(e.target.value)}
+                                placeholder={isAr ? 'مثال: أرجو تصغير الشعار قليلاً وتغيير لون الخط إلى الذهبي' : 'e.g. Slightly decrease logo size'}
+                                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              />
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRevisionId(null);
+                                    setRevisionComment('');
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl text-xs text-slate-600 hover:bg-slate-200"
+                                >
+                                  {isAr ? 'إلغاء' : 'Cancel'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!revisionComment.trim()) return;
+                                    requestProofRevision(proof.id, revisionComment);
+                                    setActiveRevisionId(null);
+                                    setRevisionComment('');
+                                    setApprovalToast(
+                                      isAr
+                                        ? `تم إرسال طلب التعديل لطلبك #${proof.orderId}. سيقوم فريقنا بتحديث البروفة فوراً!`
+                                        : `Adjustment request sent for #${proof.orderId}`
+                                    );
+                                  }}
+                                  className="px-4 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800"
+                                >
+                                  {isAr ? 'إرسال التعديل للورشة' : 'Send Revisions'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Footer Actions */}
+                      <div className="p-5 pt-0 space-y-2">
+                        {isPending && activeRevisionId !== proof.id && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                approveDigitalProof(proof.id);
+                                setApprovalToast(
+                                  isAr
+                                    ? `تهانينا! تم اعتماد تصميم طلب #${proof.orderId} بنجاح، وبدأت عملية التصنيع في الورشة!`
+                                    : `Design approved for #${proof.orderId}! Fabrication initiated.`
+                                );
+                              }}
+                              className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.01]"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>{isAr ? 'اعتماد التصميم للتصنيع ✅' : 'Approve for Production'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveRevisionId(proof.id);
+                                setRevisionComment(proof.clientNotes || '');
+                              }}
+                              className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <span>✏️</span>
+                              <span>{isAr ? 'طلب تعديل على البروفة' : 'Request Adjustments'}</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* WhatsApp Direct Send Link */}
+                        <a
+                          href={`https://wa.me/9647800000000?text=${encodeURIComponent(
+                            isAr
+                              ? `مرحباً استوديو نون والقلم، بخصوص بروفة تصميم طلب رقم *#${proof.orderId}* (${proof.productTitleAr})\nالحالة: ${isApproved ? 'معتمد للتصنيع' : 'بانتظار المتابعة'}\nالمواصفات: ${proof.specsAr}\nأرجو المتابعة والتأكيد.`
+                              : `Hello Noon & Pen, regarding design proof for order #${proof.orderId}.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                        >
+                          <MessageCircle className="w-4 h-4 text-emerald-400" />
+                          <span>{isAr ? 'إرسال نسخة ومناقشة البروفة على واتساب 💬' : 'Send Copy & Chat on WhatsApp 💬'}</span>
+                        </a>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {/* TAB 1: ORDER HISTORY & PRODUCTION TRACKING */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-fade-in">
+            {/* Manufacturing Milestone Filter Tabs */}
+            <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse" />
+                  <span>{isAr ? 'تصفية الطلبات بحسب مسار تصنيع الطلب في الورشة:' : 'Filter by Workshop Manufacturing Stage:'}</span>
+                </span>
+                <span className="text-[11px] text-slate-500 font-mono">
+                  {pastOrders.length} {isAr ? 'طلبات مسجلة' : 'total orders'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setOrderStatusFilter('all')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    orderStatusFilter === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{isAr ? 'كافة الطلبات' : 'All Orders'}</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px] font-mono">
+                    {pastOrders.length}
+                  </span>
+                </button>
+
+                {MANUFACTURING_STAGES.map((stage) => {
+                  const count = pastOrders.filter(
+                    (o) => (o.manufacturingStatus || 'under_review') === stage.id
+                  ).length;
+                  const isSelected = orderStatusFilter === stage.id;
+                  const StageIcon = stage.icon;
+
+                  return (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      onClick={() => setOrderStatusFilter(stage.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-purple-700 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <StageIcon className="w-3.5 h-3.5" />
+                      <span>{isAr ? stage.shortAr : stage.shortEn}</span>
+                      {count > 0 && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-800'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {pastOrders.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/90 space-y-4">
                 <Package className="w-12 h-12 text-slate-300 mx-auto" />
@@ -541,103 +1009,120 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 </button>
               </div>
             ) : (
-              pastOrders.map((ord, idx) => {
-                const isExpanded = expandedOrderId === ord.orderId;
-                return (
-                  <div
-                    key={ord.orderId}
-                    className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden transition-all"
-                  >
-                    {/* Order Summary Row */}
-                    <div
-                      onClick={() => setExpandedOrderId(isExpanded ? null : ord.orderId)}
-                      className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/70 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center font-mono font-bold text-sm shrink-0">
-                          #{idx + 1}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2.5">
-                            <span className="font-mono font-extrabold text-slate-900 text-base">
-                              {ord.orderId}
-                            </span>
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                              {isAr ? 'جاري التصنيع' : 'In Production'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                            <span className="flex items-center gap-1 font-mono">
-                              <Clock className="w-3.5 h-3.5" />
-                              {ord.createdAt}
-                            </span>
-                            <span aria-hidden="true">·</span>
-                            <span>
-                              {ord.items.length} {isAr ? 'منتج مخصص' : 'custom items'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+              (() => {
+                const displayedOrders =
+                  orderStatusFilter === 'all'
+                    ? pastOrders
+                    : pastOrders.filter(
+                        (ord) => (ord.manufacturingStatus || 'under_review') === orderStatusFilter
+                      );
 
-                      <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0">
-                        <div className="text-start md:text-end">
-                          <span className="text-[11px] text-slate-400 block">{isAr ? 'إجمالي الطلب:' : 'Total:'}</span>
-                          <span className="font-extrabold text-base text-purple-700 font-mono">
-                            {ord.grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleWhatsAppTrack(ord);
-                            }}
-                            type="button"
-                            className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                            title={isAr ? 'تتبع عبر واتساب' : 'Track on WhatsApp'}
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.print();
-                            }}
-                            type="button"
-                            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                            title={isAr ? 'طباعة الفاتورة' : 'Download Invoice'}
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                          {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-                        </div>
-                      </div>
+                if (displayedOrders.length === 0) {
+                  return (
+                    <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 text-xs">
+                      <p className="font-bold text-slate-800 mb-2">
+                        {isAr ? 'لا توجد طلبات في هذه المرحلة المحددة حالياً' : 'No orders in this stage currently'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setOrderStatusFilter('all')}
+                        className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                      >
+                        {isAr ? 'عرض كافة الطلبات' : 'Show All Orders'}
+                      </button>
                     </div>
+                  );
+                }
 
-                    {/* Expandable Order Details */}
-                    {isExpanded && (
-                      <div className="p-6 bg-slate-50/70 border-t border-slate-100 space-y-6 animate-fade-in">
-                        {/* Fabrication Tracking Pipeline */}
-                        <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
-                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                            {isAr ? 'مسار تجهيز الطلب في ورشة بغداد:' : 'Fabrication Status Pipeline:'}
-                          </h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                              ✓ 1. {isAr ? 'اعتماد البروفة' : 'Proof Approved'}
+                return displayedOrders.map((ord, idx) => {
+                  const isExpanded = expandedOrderId === ord.orderId;
+                  const currentStage =
+                    MANUFACTURING_STAGES.find((s) => s.id === (ord.manufacturingStatus || 'under_review')) ||
+                    MANUFACTURING_STAGES[0];
+                  const StageIcon = currentStage.icon;
+
+                  return (
+                    <div
+                      key={ord.orderId}
+                      className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden transition-all"
+                    >
+                      {/* Order Summary Row */}
+                      <div
+                        onClick={() => setExpandedOrderId(isExpanded ? null : ord.orderId)}
+                        className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/70 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center font-mono font-bold text-sm shrink-0">
+                            #{idx + 1}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <span className="font-mono font-extrabold text-slate-900 text-base">
+                                {ord.orderId}
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center gap-1.5 shadow-2xs ${currentStage.badgeBg} ${currentStage.badgeText}`}>
+                                <StageIcon className="w-3.5 h-3.5" />
+                                <span>{isAr ? currentStage.titleAr : currentStage.titleEn}</span>
+                              </span>
                             </div>
-                            <div className="p-2.5 rounded-xl bg-purple-50 text-purple-800 font-bold border border-purple-200 animate-pulse">
-                              ⚙️ 2. {isAr ? 'قص الليزر والتجميع' : 'Laser Fabrication'}
-                            </div>
-                            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-500">
-                              🔍 3. {isAr ? 'فحص الجودة' : 'Quality Check'}
-                            </div>
-                            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-500">
-                              🚚 4. {isAr ? 'الشحن والتسليم' : 'Dispatched'}
+                            <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                              <span className="flex items-center gap-1 font-mono">
+                                <Clock className="w-3.5 h-3.5" />
+                                {ord.createdAt}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span>
+                                {ord.items.length} {isAr ? 'منتج مخصص' : 'custom items'}
+                              </span>
                             </div>
                           </div>
                         </div>
+
+                        <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0">
+                          <div className="text-start md:text-end">
+                            <span className="text-[11px] text-slate-400 block">{isAr ? 'إجمالي الطلب:' : 'Total:'}</span>
+                            <span className="font-extrabold text-base text-purple-700 font-mono">
+                              {ord.grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleWhatsAppTrack(ord);
+                              }}
+                              type="button"
+                              className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                              title={isAr ? 'تتبع عبر واتساب' : 'Track on WhatsApp'}
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.print();
+                              }}
+                              type="button"
+                              className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                              title={isAr ? 'طباعة الفاتورة' : 'Download Invoice'}
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                            {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expandable Order Details */}
+                      {isExpanded && (
+                        <div className="p-6 bg-slate-50/70 border-t border-slate-100 space-y-6 animate-fade-in">
+                          {/* Visual Interactive Manufacturing Tracking Pipeline */}
+                          <OrderManufacturingTracker
+                            order={ord}
+                            variant="detailed"
+                            allowInteractiveSimulation={true}
+                          />
 
                         {/* Items in this Order */}
                         <div className="space-y-3">
@@ -723,10 +1208,11 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                     )}
                   </div>
                 );
-              })
-            )}
-          </div>
-        )}
+              });
+            })()
+          )}
+        </div>
+      )}
 
         {/* TAB 2: SAVED DESIGNS LIBRARY */}
         {activeTab === 'designs' && (
@@ -1020,6 +1506,32 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/* Fullscreen Proof Preview Modal */}
+      {selectedProofPreview && (
+        <div
+          className="fixed inset-0 z-60 bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setSelectedProofPreview(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedProofPreview(null)}
+            className="absolute top-6 end-6 p-2 rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl overflow-hidden p-2 shadow-2xl border border-white/20">
+            <img
+              src={selectedProofPreview}
+              alt="Proof full preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl mx-auto"
+            />
+            <div className="p-3 text-center text-xs text-white/80 font-bold">
+              {isAr ? 'بروفة تصميم معتمدة - اضغط في أي مكان للإغلاق' : 'Official Proof - Click anywhere to close'}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

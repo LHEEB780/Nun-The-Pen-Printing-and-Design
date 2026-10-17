@@ -5,7 +5,7 @@ import { COMPANY_CONTACT } from '../../data/mockData';
 import { useContentStore, QuickLinkSectionKey } from '../../store/useContentStore';
 
 interface FooterProps {
-  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin') => void;
+  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty', specialtyId?: any) => void;
   onOpenCustomizer?: (productId?: string) => void;
 }
 

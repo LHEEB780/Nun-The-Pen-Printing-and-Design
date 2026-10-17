@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
+import { useAdminStore } from '../../store/useAdminStore';
 import { SlidersHorizontal, Sparkles, Layers, Ruler, Palette, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
 import { useContentStore } from '../../store/useContentStore';
 
@@ -18,6 +19,8 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { setSelectedArticleId } = useContentStore();
+  const adminProducts = useAdminStore((state) => state.adminProducts);
+  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
 
   return (
     <section id="shop" className="py-20 bg-white relative">
@@ -62,7 +65,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {PRODUCTS.map((prod) => (
+          {productsList.map((prod) => (
             <div
               key={prod.id}
               className="group bg-slate-50/50 hover:bg-white rounded-2xl border border-slate-200/80 hover:border-purple-300 hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden"

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useContentStore } from '../../store/useContentStore';
 import { PRODUCTS } from '../../data/mockData';
+import { useAdminStore } from '../../store/useAdminStore';
 
 interface CategoryShowcaseSectionProps {
   onSelectCategory?: (categoryId: string) => void;
@@ -38,6 +39,8 @@ export const CategoryShowcaseSection: React.FC<CategoryShowcaseSectionProps> = (
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { setSelectedArticleId } = useContentStore();
+  const adminProducts = useAdminStore((state) => state.adminProducts);
+  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
 
   const [activeTabId, setActiveTabId] = useState<string>('led');
   const [activeSubImageIdx, setActiveSubImageIdx] = useState<number>(0);
@@ -47,7 +50,7 @@ export const CategoryShowcaseSection: React.FC<CategoryShowcaseSectionProps> = (
     PRODUCT_CATEGORIES[0];
 
   // Associated products for current category
-  const categoryProducts = PRODUCTS.filter((p) => {
+  const categoryProducts = productsList.filter((p) => {
     if (activeCategory.id === 'portraits') {
       return p.category === 'portraits' || p.category === 'weddings';
     }
@@ -149,12 +152,12 @@ export const CategoryShowcaseSection: React.FC<CategoryShowcaseSectionProps> = (
                   }`}
                 >
                   {cat.id === 'portraits'
-                    ? PRODUCTS.filter(
+                    ? productsList.filter(
                         (p) =>
                           p.category === 'portraits' ||
                           p.category === 'weddings'
                       ).length
-                    : PRODUCTS.filter((p) => p.category === cat.id).length}{' '}
+                    : productsList.filter((p) => p.category === cat.id).length}{' '}
                   {isAr ? 'منتج' : 'items'}
                 </span>
               </button>

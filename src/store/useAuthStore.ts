@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { OrderRecord } from './useCartStore';
+import { OrderRecord, ManufacturingStatus } from './useCartStore';
 
 export interface UserProfile {
   id: string;
@@ -25,11 +25,31 @@ export interface SavedDesign {
   productId?: string;
 }
 
+export interface DigitalProof {
+  id: string;
+  orderId: string;
+  productTitleAr: string;
+  productTitleEn: string;
+  previewUrl: string;
+  status: 'pending_approval' | 'approved' | 'revision_requested';
+  createdAt: string;
+  specsAr: string;
+  specsEn: string;
+  clientNotes?: string;
+  whatsappMessage: string;
+}
+
 interface AuthStore {
   user: UserProfile | null;
   isAuthenticated: boolean;
   savedDesigns: SavedDesign[];
   pastOrders: OrderRecord[];
+  digitalProofs: DigitalProof[];
+  hasProofNotification: boolean;
+  dismissProofNotification: () => void;
+  approveDigitalProof: (id: string) => void;
+  requestProofRevision: (id: string, notes: string) => void;
+  addDigitalProof: (proof: Omit<DigitalProof, 'id' | 'createdAt'>) => void;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   register: (profileData: Omit<UserProfile, 'id' | 'createdAt'>, password?: string) => Promise<{ success: boolean; error?: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
@@ -39,6 +59,7 @@ interface AuthStore {
   deleteSavedDesign: (id: string) => void;
   renameSavedDesign: (id: string, newTitle: string) => void;
   addOrderToHistory: (order: OrderRecord) => void;
+  updateOrderManufacturingStatus: (orderId: string, status: ManufacturingStatus) => void;
 }
 
 // Initial dummy user for immediate demo evaluation
@@ -53,11 +74,15 @@ const DEMO_USER: UserProfile = {
   createdAt: '2026-02-15',
 };
 
-// Realistic mock past orders for customer history
+// Realistic mock past orders for customer history with live manufacturing tracking
 const INITIAL_ORDERS: OrderRecord[] = [
   {
     orderId: 'NP-2026-8419',
     createdAt: '2026-03-28 14:30',
+    manufacturingStatus: 'printing', // في المطبعة
+    manufacturingStepIndex: 2,
+    estimatedDelivery: 'غداً، خلال ساعات المساء (بغداد)',
+    workshopNotes: 'تم اعتماد البروفة بنجاح، وجاري قص الأكريليك الكريستالي 4 ملم بالليزر مع تلميع الحواف وتثبيت إضاءة LED المضيئة.',
     items: [
       {
         id: 'ord-item-1',
@@ -105,8 +130,61 @@ const INITIAL_ORDERS: OrderRecord[] = [
     grandTotal: 122000,
   },
   {
+    orderId: 'NP-2026-9530',
+    createdAt: '2026-04-02 09:15',
+    manufacturingStatus: 'designing', // قيد التصميم
+    manufacturingStepIndex: 1,
+    estimatedDelivery: 'خلال 48 ساعة بعد اعتماد البروفة',
+    workshopNotes: 'فريق الخط العربي يُجهز مسودة المخطوطة الكوفية والبروفة الرقمية 3D لإرسالها لحسابك وللواتساب للاعتماد النهائي.',
+    items: [
+      {
+        id: 'ord-item-3',
+        productId: 'prod-acrylic-award',
+        titleAr: 'درع تكريم أكريليك كريستالي فاخر مع قاعدة خشبية',
+        titleEn: 'Luxury Crystal Acrylic Trophy with Walnut Base',
+        image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=900&q=80',
+        category: 'acrylic',
+        quantity: 3,
+        unitPrice: 45000,
+        totalPrice: 135000,
+        customOptions: {
+          customText: 'درع التميز والإبداع السنوي لعام 2026',
+          fontName: 'خط الثلث الجلي الاحترافي',
+          dimensionLabelAr: 'ارتفاع 28 سم × عرض 16 سم',
+          dimensionLabelEn: 'Height 28cm × Width 16cm',
+          materialLabelAr: 'كريستال أكريليك فائق الشفافية سماكة 10 ملم',
+          materialLabelEn: '10mm Ultra-Clear Cast Acrylic',
+          logoFileName: 'award-crest-baghdad.svg',
+          notes: 'حفر ليزري عميق مع تذهيب الحروف',
+        },
+      },
+    ],
+    shipping: {
+      fullName: 'مصطفى حيدر الربيعي',
+      phone: '+964 780 123 4567',
+      governorate: 'بغداد - الكرخ',
+      address: 'بغداد، المنصور، شارع 14 رمضان',
+      deliveryType: 'standard',
+      shippingCost: 5000,
+    },
+    paymentMethod: 'zaincash',
+    paymentDetails: {
+      transactionId: 'ZC-9930182',
+      status: 'paid',
+      gatewayNameAr: 'زين كاش (ZainCash)',
+      gatewayNameEn: 'ZainCash Wallet',
+    },
+    subtotal: 135000,
+    shippingCost: 5000,
+    grandTotal: 140000,
+  },
+  {
     orderId: 'NP-2026-7201',
     createdAt: '2026-03-12 11:15',
+    manufacturingStatus: 'ready_for_shipping', // جاهز للشحن
+    manufacturingStepIndex: 3,
+    estimatedDelivery: 'اليوم - قيد التسليم للمندوب',
+    workshopNotes: 'تم فحص جودة البصمة الحرارية الذهبية وتغليف الكروت بصناديق فاخرة ضد الرطوبة والصدمات.',
     items: [
       {
         id: 'ord-item-2',
@@ -194,11 +272,61 @@ const INITIAL_SAVED_DESIGNS: SavedDesign[] = [
   },
 ];
 
+const INITIAL_PROOFS: DigitalProof[] = [
+  {
+    id: 'proof-9021',
+    orderId: 'NP-2026-8419',
+    productTitleAr: 'درع أكريليك مكتبي 3D LED مع حفر ليزري ميكروني',
+    productTitleEn: '3D Optical LED Acrylic Executive Sign',
+    previewUrl: '/images/products/travel_agency_desk_front_1791817396012.jpg',
+    status: 'pending_approval',
+    createdAt: '2026-04-12 11:20',
+    specsAr: 'أكريليك كاست 5 ملم ألماني، إضاءة سماوية 12V، قاعدة لمسية بيضاء، نقش الشعار ورقم الهاتف',
+    specsEn: '5mm German Cast Acrylic, Cyan LED 12V, Touch White Base, Laser Engraved Logo',
+    whatsappMessage: 'مرحباً استوديو نون والقلم، بخصوص بروفة تصميم طلب رقم NP-2026-8419 أود مناقشة تفاصيل التنفيذ والتعديل.',
+  },
+];
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: DEMO_USER,
   isAuthenticated: true, // Logged in by default with demo user for smooth testing
   savedDesigns: INITIAL_SAVED_DESIGNS,
   pastOrders: INITIAL_ORDERS,
+  digitalProofs: INITIAL_PROOFS,
+  hasProofNotification: true,
+
+  dismissProofNotification: () => {
+    set({ hasProofNotification: false });
+  },
+
+  approveDigitalProof: (id) => {
+    set((state) => ({
+      digitalProofs: state.digitalProofs.map((p) =>
+        p.id === id ? { ...p, status: 'approved' as const } : p
+      ),
+      hasProofNotification: false,
+    }));
+  },
+
+  requestProofRevision: (id, notes) => {
+    set((state) => ({
+      digitalProofs: state.digitalProofs.map((p) =>
+        p.id === id ? { ...p, status: 'revision_requested' as const, clientNotes: notes } : p
+      ),
+    }));
+  },
+
+  addDigitalProof: (proofData) => {
+    const newProof: DigitalProof = {
+      ...proofData,
+      id: `proof-${Date.now()}`,
+      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+    };
+    set((state) => ({
+      digitalProofs: [newProof, ...state.digitalProofs],
+      hasProofNotification: true,
+    }));
+  },
 
   login: async (email, password) => {
     // Simulated authentication API latency
@@ -272,7 +400,35 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   addOrderToHistory: (order) => {
     set((state) => ({
-      pastOrders: [order, ...state.pastOrders],
+      pastOrders: [
+        {
+          ...order,
+          manufacturingStatus: order.manufacturingStatus || 'under_review',
+          manufacturingStepIndex: order.manufacturingStepIndex ?? 0,
+        },
+        ...state.pastOrders,
+      ],
+    }));
+  },
+
+  updateOrderManufacturingStatus: (orderId, status) => {
+    const statusToIndex: Record<ManufacturingStatus, number> = {
+      under_review: 0,
+      designing: 1,
+      printing: 2,
+      ready_for_shipping: 3,
+      delivered: 4,
+    };
+
+    set((state) => ({
+      pastOrders: state.pastOrders.map((ord) => {
+        if (ord.orderId !== orderId) return ord;
+        return {
+          ...ord,
+          manufacturingStatus: status,
+          manufacturingStepIndex: statusToIndex[status] ?? 0,
+        };
+      }),
     }));
   },
 }));

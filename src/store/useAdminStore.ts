@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { ProductItem, PRODUCTS } from '../data/mockData';
 import { OrderRecord } from './useCartStore';
 
@@ -53,6 +54,7 @@ interface AdminStore {
   addProduct: (prod: ProductItem) => void;
   updateProduct: (id: string, updated: Partial<ProductItem>) => void;
   deleteProduct: (id: string) => void;
+  resetProductsToDefaults: () => void;
 
   // Orders Management State
   adminOrders: AdminOrderRecord[];
@@ -345,90 +347,106 @@ const INITIAL_ADMIN_ORDERS: AdminOrderRecord[] = [
   },
 ];
 
-export const useAdminStore = create<AdminStore>((set) => ({
-  currentRole: 'super_admin',
-  setCurrentRole: (role) => set({ currentRole: role }),
+export const useAdminStore = create<AdminStore>()(
+  persist(
+    (set) => ({
+      currentRole: 'super_admin',
+      setCurrentRole: (role) => set({ currentRole: role }),
 
-  customFormFields: INITIAL_DYNAMIC_FIELDS,
-  addField: (fieldData) => {
-    const newField: DynamicFormField = {
-      ...fieldData,
-      id: `field-${Date.now()}`,
-    };
-    set((state) => ({
-      customFormFields: [...state.customFormFields, newField],
-    }));
-  },
-  updateField: (id, updated) => {
-    set((state) => ({
-      customFormFields: state.customFormFields.map((f) => (f.id === id ? { ...f, ...updated } : f)),
-    }));
-  },
-  deleteField: (id) => {
-    set((state) => ({
-      customFormFields: state.customFormFields.filter((f) => f.id !== id),
-    }));
-  },
+      customFormFields: INITIAL_DYNAMIC_FIELDS,
+      addField: (fieldData) => {
+        const newField: DynamicFormField = {
+          ...fieldData,
+          id: `field-${Date.now()}`,
+        };
+        set((state) => ({
+          customFormFields: [...state.customFormFields, newField],
+        }));
+      },
+      updateField: (id, updated) => {
+        set((state) => ({
+          customFormFields: state.customFormFields.map((f) => (f.id === id ? { ...f, ...updated } : f)),
+        }));
+      },
+      deleteField: (id) => {
+        set((state) => ({
+          customFormFields: state.customFormFields.filter((f) => f.id !== id),
+        }));
+      },
 
-  adminProducts: PRODUCTS,
-  addProduct: (prod) => {
-    set((state) => ({
-      adminProducts: [prod, ...state.adminProducts],
-    }));
-  },
-  updateProduct: (id, updated) => {
-    set((state) => ({
-      adminProducts: state.adminProducts.map((p) => (p.id === id ? { ...p, ...updated } : p)),
-    }));
-  },
-  deleteProduct: (id) => {
-    set((state) => ({
-      adminProducts: state.adminProducts.filter((p) => p.id !== id),
-    }));
-  },
+      adminProducts: PRODUCTS,
+      addProduct: (prod) => {
+        set((state) => ({
+          adminProducts: [prod, ...state.adminProducts],
+        }));
+      },
+      updateProduct: (id, updated) => {
+        set((state) => ({
+          adminProducts: state.adminProducts.map((p) => (p.id === id ? { ...p, ...updated } : p)),
+        }));
+      },
+      deleteProduct: (id) => {
+        set((state) => ({
+          adminProducts: state.adminProducts.filter((p) => p.id !== id),
+        }));
+      },
+      resetProductsToDefaults: () => {
+        set({ adminProducts: PRODUCTS });
+      },
 
-  adminOrders: INITIAL_ADMIN_ORDERS,
-  updateOrderStatus: (orderId, status) => {
-    set((state) => ({
-      adminOrders: state.adminOrders.map((o) => (o.orderId === orderId ? { ...o, workflowStatus: status } : o)),
-    }));
-  },
-  updatePaymentStatus: (orderId, status) => {
-    set((state) => ({
-      adminOrders: state.adminOrders.map((o) =>
-        o.orderId === orderId
-          ? { ...o, paymentDetails: { ...o.paymentDetails, status } }
-          : o
-      ),
-    }));
-  },
-  updateDesignerNotes: (orderId, notes) => {
-    set((state) => ({
-      adminOrders: state.adminOrders.map((o) => (o.orderId === orderId ? { ...o, designerNotes: notes } : o)),
-    }));
-  },
+      adminOrders: INITIAL_ADMIN_ORDERS,
+      updateOrderStatus: (orderId, status) => {
+        set((state) => ({
+          adminOrders: state.adminOrders.map((o) => (o.orderId === orderId ? { ...o, workflowStatus: status } : o)),
+        }));
+      },
+      updatePaymentStatus: (orderId, status) => {
+        set((state) => ({
+          adminOrders: state.adminOrders.map((o) =>
+            o.orderId === orderId
+              ? { ...o, paymentDetails: { ...o.paymentDetails, status } }
+              : o
+          ),
+        }));
+      },
+      updateDesignerNotes: (orderId, notes) => {
+        set((state) => ({
+          adminOrders: state.adminOrders.map((o) => (o.orderId === orderId ? { ...o, designerNotes: notes } : o)),
+        }));
+      },
 
-  staffMembers: INITIAL_STAFF,
-  updateStaffRole: (staffId, role) => {
-    set((state) => ({
-      staffMembers: state.staffMembers.map((s) => (s.id === staffId ? { ...s, role } : s)),
-    }));
-  },
-  addStaffMember: (staffData) => {
-    const newStaff: StaffMember = {
-      ...staffData,
-      id: `st-${Date.now()}`,
-      lastActive: 'الآن',
-    };
-    set((state) => ({
-      staffMembers: [...state.staffMembers, newStaff],
-    }));
-  },
-  toggleStaffStatus: (staffId) => {
-    set((state) => ({
-      staffMembers: state.staffMembers.map((s) =>
-        s.id === staffId ? { ...s, status: s.status === 'active' ? 'suspended' : 'active' } : s
-      ),
-    }));
-  },
-}));
+      staffMembers: INITIAL_STAFF,
+      updateStaffRole: (staffId, role) => {
+        set((state) => ({
+          staffMembers: state.staffMembers.map((s) => (s.id === staffId ? { ...s, role } : s)),
+        }));
+      },
+      addStaffMember: (staffData) => {
+        const newStaff: StaffMember = {
+          ...staffData,
+          id: `st-${Date.now()}`,
+          lastActive: 'الآن',
+        };
+        set((state) => ({
+          staffMembers: [...state.staffMembers, newStaff],
+        }));
+      },
+      toggleStaffStatus: (staffId) => {
+        set((state) => ({
+          staffMembers: state.staffMembers.map((s) =>
+            s.id === staffId ? { ...s, status: s.status === 'active' ? 'suspended' : 'active' } : s
+          ),
+        }));
+      },
+    }),
+    {
+      name: 'noon_walqalam_admin_store_v2',
+      partialize: (state) => ({
+        adminProducts: state.adminProducts,
+        customFormFields: state.customFormFields,
+        adminOrders: state.adminOrders,
+        staffMembers: state.staffMembers,
+      }),
+    }
+  )
+);

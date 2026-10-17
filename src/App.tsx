@@ -11,6 +11,8 @@ import { ServicesSection } from './components/home/ServicesSection';
 import { PortfolioSection } from './components/home/PortfolioSection';
 import { ShopSection } from './components/home/ShopSection';
 import { CategoryShowcaseSection } from './components/home/CategoryShowcaseSection';
+import { SpecialtyGatewaysSection, SpecialtyId } from './components/home/SpecialtyGatewaysSection';
+import { SpecialtyHubPage } from './components/specialty/SpecialtyHubPage';
 import { WhyUsSection } from './components/home/WhyUsSection';
 import { TestimonialsSection } from './components/home/TestimonialsSection';
 import { ContactSection } from './components/contact/ContactSection';
@@ -32,7 +34,8 @@ import { OrderRecord, useCartStore } from './store/useCartStore';
 import { useAuthStore } from './store/useAuthStore';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty'>('home');
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<SpecialtyId>('boxes');
   const [selectedProductId, setSelectedProductId] = useState<string>('prod-acrylic-led-sign');
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [customizerInitialId, setCustomizerInitialId] = useState<string | undefined>(undefined);
@@ -49,6 +52,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSelectSpecialty = (specialtyId: SpecialtyId) => {
+    setSelectedSpecialtyId(specialtyId);
+    setCurrentView('specialty');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleOpenCustomizer = (productId?: string) => {
     setCustomizerInitialId(productId);
     setCustomizerOpen(true);
@@ -59,10 +68,13 @@ export default function App() {
     setCustomizerInitialId(undefined);
   };
 
-  const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin') => {
+  const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty', specialtyId?: SpecialtyId) => {
     if (view === 'dashboard' && !isAuthenticated) {
       setAuthModalOpen(true);
       return;
+    }
+    if (view === 'specialty' && specialtyId) {
+      setSelectedSpecialtyId(specialtyId);
     }
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -83,6 +95,7 @@ export default function App() {
         onNavigate={handleNavigate}
         onOpenCustomizer={handleOpenCustomizer}
         onOpenAuthModal={() => setAuthModalOpen(true)}
+        activeSpecialtyId={selectedSpecialtyId}
       />
 
       {/* Main Content Router */}
@@ -91,6 +104,12 @@ export default function App() {
           <>
             <HeroSection
               onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
+              onSelectSpecialty={handleSelectSpecialty}
+            />
+            {/* The 4 Grand Specialty Gateways (Pacdora-inspired primary landing architecture) */}
+            <SpecialtyGatewaysSection
+              onSelectSpecialty={handleSelectSpecialty}
+              onSelectProduct={handleSelectProduct}
             />
             <ServicesSection
               onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
@@ -98,21 +117,23 @@ export default function App() {
             <PortfolioSection
               onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
             />
-            <CategoryShowcaseSection
-              onSelectCategory={() => handleNavigate('shop')}
-              onSelectProduct={handleSelectProduct}
-              onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
-              onViewAllProducts={() => handleNavigate('shop')}
-            />
-            <ShopSection
-              onSelectProduct={handleSelectProduct}
-              onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
-              onViewAllProducts={() => handleNavigate('shop')}
-            />
             <WhyUsSection />
             <TestimonialsSection />
             <ContactSection />
           </>
+        )}
+
+        {currentView === 'specialty' && (
+          <SpecialtyHubPage
+            specialtyId={selectedSpecialtyId}
+            onSelectSpecialty={(sid) => {
+              setSelectedSpecialtyId(sid);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onBackToHome={() => handleNavigate('home')}
+            onSelectProduct={handleSelectProduct}
+            onOpenCustomizerModal={handleOpenCustomizer}
+          />
         )}
 
         {currentView === 'shop' && (
@@ -165,11 +186,12 @@ export default function App() {
         onOpenCustomizer={handleOpenCustomizer}
       />
 
-      {/* Interactive Quick Customizer Modal */}
+      {/* Product Showcase & Client Data Upload Modal */}
       <CustomizerModal
         isOpen={customizerOpen}
         onClose={handleCloseCustomizer}
         initialProductId={customizerInitialId || selectedProductId}
+        onNavigateToDashboard={() => handleNavigate('dashboard')}
       />
 
       {/* Slide-over Cart Drawer */}
