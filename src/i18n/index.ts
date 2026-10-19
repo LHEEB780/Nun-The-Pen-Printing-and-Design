@@ -13,7 +13,7 @@ export const resources = {
       nav: {
         home: 'الرئيسية',
         services: 'خدماتنا',
-        portfolio: 'معرض الأعمال',
+        portfolio: 'معرض الأعمال المنفذة',
         shop: 'منتجات مخصصة',
         whyUs: 'لماذا نون والقلم؟',
         testimonials: 'آراء عملائنا',
@@ -120,7 +120,10 @@ export const resources = {
         t2Role: 'عميلة - بغداد',
         t3Text: 'طباعة علب التغليف الكرتونية لعلامتنا التجارية رفعت من قيمة المنتج بشكل كبير. السلوفان المات والبصمة متقنة جداً.',
         t3Author: 'علي الجابري',
-        t3Role: 'مؤسس براند إكسلنس للعطور'
+        t3Role: 'مؤسس براند إكسلنس للعطور',
+        t4Text: 'كروت الأعمال القطنية بوزن 600 غم مع البصمة الحرارية الذهبية عكست فخامة العيادة بشكل مبهر. جودة الورق والتشطيب استثنائية.',
+        t4Author: 'د. نور الهاشمي',
+        t4Role: 'طبيبة استشارية - مجمع الهاشمي الطبي'
       },
       cart: {
         title: 'سلة طلباتك المخصصة',
@@ -177,7 +180,7 @@ export const resources = {
       nav: {
         home: 'Home',
         services: 'Services',
-        portfolio: 'Portfolio',
+        portfolio: 'Executed Works Portfolio',
         shop: 'Custom Products',
         whyUs: 'Why Choose Us',
         testimonials: 'Testimonials',
@@ -284,7 +287,10 @@ export const resources = {
         t2Role: 'Private Collector - Baghdad',
         t3Text: 'Our luxury perfume packaging boxes gained so much prestige after partnering with Noon & Pen. The foil stamping is razor-sharp.',
         t3Author: 'Ali Al-Jabiri',
-        t3Role: 'Founder - Excellence Parfums'
+        t3Role: 'Founder - Excellence Parfums',
+        t4Text: 'The 600gsm cotton business cards with hot gold foil stamping captured the exact luxury aesthetic our medical practice demands. Flawless craft.',
+        t4Author: 'Dr. Noor Al-Hashemi',
+        t4Role: 'Consultant - Al-Hashemi Medical Complex'
       },
       cart: {
         title: 'Your Custom Order Cart',

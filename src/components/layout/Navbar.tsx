@@ -15,17 +15,19 @@ import {
   Tag,
   ArrowRight,
   ArrowLeft,
+  Flame,
 } from 'lucide-react';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useOffersStore } from '../../store/useOffersStore';
 import { LanguageToggle } from './LanguageToggle';
 
 import { SpecialtyId } from '../home/SpecialtyGatewaysSection';
 
 interface NavbarProps {
   onOpenCustomizer: (productId?: string) => void;
-  currentView: 'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty';
-  onNavigate: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty', specialtyId?: SpecialtyId) => void;
+  currentView: 'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio';
+  onNavigate: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: SpecialtyId) => void;
   onOpenAuthModal: () => void;
   activeSpecialtyId?: SpecialtyId;
 }
@@ -67,6 +69,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     hasProofNotification,
     dismissProofNotification,
   } = useAuthStore();
+  const { getFeaturedOffer, getActiveOffers } = useOffersStore();
+  const featuredOffer = getFeaturedOffer();
+  const activeOffersCount = getActiveOffers().length;
+
   const totalCartCount = getTotalItemsCount();
   const pendingProofsCount = digitalProofs.filter((p) => p.status === 'pending_approval').length;
 
@@ -82,8 +88,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleLinkClick = (href: string) => {
     setMobileMenuOpen(false);
-    if (href === '#shop') {
+    if (href === '#offers') {
+      onNavigate('offers');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (href === '#shop') {
       onNavigate('shop');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (href === '#portfolio') {
+      onNavigate('portfolio');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       if (currentView !== 'home') {
@@ -100,38 +112,73 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const navLinks = [
-    { href: '#home', label: t('nav.home'), isShop: false },
-    { href: '#specialties', label: isAr ? 'استوديوهات الإنتاج' : 'Production Studios', isShop: false },
-    { href: '#shop', label: isAr ? 'المتجر والتخصيص' : 'Shop & Customize', isShop: true },
-    { href: '#services', label: t('nav.services'), isShop: false },
-    { href: '#portfolio', label: t('nav.portfolio'), isShop: false },
-    { href: '#why-us', label: t('nav.whyUs'), isShop: false },
-    { href: '#testimonials', label: t('nav.testimonials'), isShop: false },
-    { href: '#contact', label: t('nav.contact'), isShop: false },
+    { href: '#home', label: t('nav.home'), isShop: false, isOffers: false },
+    { href: '#specialties', label: isAr ? 'استوديوهات الإنتاج' : 'Production Studios', isShop: false, isOffers: false },
+    { href: '#offers', label: isAr ? 'عروض الموسم' : 'Seasonal Offers', isShop: false, isOffers: true },
+    { href: '#shop', label: isAr ? 'المتجر والتخصيص' : 'Shop & Customize', isShop: true, isOffers: false },
+    { href: '#services', label: t('nav.services'), isShop: false, isOffers: false },
+    { href: '#portfolio', label: t('nav.portfolio'), isShop: false, isOffers: false },
+    { href: '#why-us', label: t('nav.whyUs'), isShop: false, isOffers: false },
+    { href: '#testimonials', label: t('nav.testimonials'), isShop: false, isOffers: false },
+    { href: '#contact', label: t('nav.contact'), isShop: false, isOffers: false },
   ];
 
   return (
     <header className="fixed top-0 inset-x-0 z-40 transition-all duration-300">
-      {/* Slim, Dismissible Promotional Banner (Top of Navbar) */}
+      {/* Slim, Dismissible Promotional Banner (Top of Navbar - Fully Interactive) */}
       {isPromoBannerVisible && (
-        <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 text-amber-200 border-b border-amber-500/25 px-3 py-1.5 transition-all text-[11px] sm:text-xs shadow-xs select-none">
+        <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 text-amber-200 border-b border-amber-500/25 px-2.5 sm:px-3 py-1.5 transition-all text-[11px] sm:text-xs shadow-xs select-none">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-            {/* Offer Highlight */}
-            <div className="flex items-center gap-2 overflow-hidden mx-auto sm:mx-0">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 text-[10px] shrink-0">
-                <Tag className="w-3 h-3 text-amber-400" />
+            {/* Offer Highlight - Clickable on both Mobile and Desktop */}
+            <div
+              onClick={() => {
+                onNavigate('offers');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2 overflow-hidden mx-auto sm:mx-0 flex-1 cursor-pointer group"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onNavigate('offers');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate('offers');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black border border-amber-300 text-[10px] shrink-0 shadow-xs hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+              >
+                <Tag className="w-3 h-3 text-slate-950" />
                 <span>{isAr ? 'عروض الموسم' : 'Seasonal Sale'}</span>
-              </span>
+              </button>
 
-              <p className="truncate font-medium text-slate-200">
-                {isAr ? (
+              <p className="truncate font-medium text-slate-200 group-hover:text-amber-200 transition-colors">
+                {featuredOffer ? (
+                  isAr ? (
+                    <>
+                      <strong className="text-amber-300 font-bold">{featuredOffer.discountBadgeAr}</strong>: {featuredOffer.titleAr} +{' '}
+                      <span className="text-emerald-300 font-semibold">شحن مجاني لكافة المحافظات</span> للطلبات فوق 150,000 د.ع
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-amber-300 font-bold">{featuredOffer.discountBadgeEn}</strong>: {featuredOffer.titleEn} +{' '}
+                      <span className="text-emerald-300 font-semibold">Free nationwide delivery</span> on orders over 150K IQD!
+                    </>
+                  )
+                ) : isAr ? (
                   <>
-                    <strong className="text-amber-300 font-bold">خصم يصل إلى 25%</strong> على علب الكرتون الفاخرة وكروت البصمة +{' '}
+                    <strong className="text-amber-300 font-bold">خصم يصل إلى 33%</strong> على علب الكرتون الفاخرة وكروت البصمة +{' '}
                     <span className="text-emerald-300 font-semibold">شحن مجاني لكافة المحافظات</span> للطلبات فوق 150,000 د.ع
                   </>
                 ) : (
                   <>
-                    <strong className="text-amber-300 font-bold">Up to 25% off</strong> luxury rigid boxes & foil cards +{' '}
+                    <strong className="text-amber-300 font-bold">Up to 33% off</strong> luxury rigid boxes & foil cards +{' '}
                     <span className="text-emerald-300 font-semibold">Free nationwide delivery</span> on orders over 150,000 IQD!
                   </>
                 )}
@@ -139,15 +186,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 type="button"
-                onClick={() => {
-                  if (currentView !== 'shop') {
-                    onNavigate('shop');
-                  }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate('offers');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="hidden md:inline-flex items-center gap-1 text-amber-300 hover:text-white font-bold transition-colors underline underline-offset-2 shrink-0 cursor-pointer ms-1.5"
+                className="inline-flex items-center gap-1 text-amber-300 group-hover:text-white font-bold transition-colors underline underline-offset-2 shrink-0 cursor-pointer ms-1 text-[10px] sm:text-xs"
               >
-                <span>{isAr ? 'استكشف الخصومات' : 'Explore Offers'}</span>
+                <span>{isAr ? 'عرض الخصومات' : 'Explore'}</span>
                 {isAr ? <ArrowLeft className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
               </button>
             </div>
@@ -198,30 +244,45 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </button>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <button
-                key={link.href}
-                onClick={() => handleLinkClick(link.href)}
-                type="button"
-                className={`text-sm font-medium transition-colors relative py-1 cursor-pointer ${
-                  (link.isShop && currentView === 'shop') || (!link.isShop && currentView === 'home' && link.href === '#home')
-                    ? 'text-purple-700 font-bold after:w-full after:h-0.5 after:bg-purple-600 after:absolute after:bottom-0 after:start-0'
-                    : 'text-slate-600 hover:text-purple-700 hover:after:w-full after:w-0 after:h-0.5 after:bg-purple-600 after:absolute after:bottom-0 after:start-0 after:transition-all after:duration-200'
-                }`}
-              >
-                {link.label}
-              </button>
-            ))}
+          {/* Desktop Nav Links (Responsive gap and typography to guarantee menu items never get pushed) */}
+          <nav className="hidden lg:flex items-center gap-2.5 xl:gap-4 2xl:gap-5.5">
+            {navLinks.map((link) => {
+              const isOffersActive = link.isOffers && currentView === 'offers';
+              const isShopActive = link.isShop && currentView === 'shop';
+              const isHomeActive = !link.isShop && !link.isOffers && currentView === 'home' && link.href === '#home';
+              const isCurrent = isOffersActive || isShopActive || isHomeActive;
+
+              return (
+                <button
+                  key={link.href}
+                  onClick={() => handleLinkClick(link.href)}
+                  type="button"
+                  className={`text-xs xl:text-sm font-medium transition-colors relative py-1 cursor-pointer flex items-center gap-1 xl:gap-1.5 whitespace-nowrap ${
+                    isCurrent
+                      ? 'text-purple-700 font-bold after:w-full after:h-0.5 after:bg-purple-600 after:absolute after:bottom-0 after:start-0'
+                      : link.isOffers
+                      ? 'text-amber-800 font-bold hover:text-amber-900'
+                      : 'text-slate-600 hover:text-purple-700 hover:after:w-full after:w-0 after:h-0.5 after:bg-purple-600 after:absolute after:bottom-0 after:start-0 after:transition-all after:duration-200'
+                  }`}
+                >
+                  {link.isOffers && <Flame className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />}
+                  <span>{link.label}</span>
+                  {link.isOffers && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[9px] font-black uppercase shrink-0">
+                      {isAr ? 'خصم' : 'Sale'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
 
-          {/* Action Tools */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Language & Direction Toggle (RTL / LTR) */}
-            <LanguageToggle variant="segmented" />
+          {/* Action Tools: Smaller, refined buttons ordered by size */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* 1. Single Opposite-Language Button: compact 34px height */}
+            <LanguageToggle variant="single" />
 
-            {/* Notification Bell Button (واشعار في أعلى حساب للتنبيه) */}
+            {/* 2. Notification Bell (Icon-only: 34px x 34px) */}
             <div className="relative">
               <button
                 onClick={() => {
@@ -229,17 +290,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   if (userMenuOpen) setUserMenuOpen(false);
                 }}
                 type="button"
-                className={`relative p-2 rounded-xl border transition-all cursor-pointer ${
+                className={`relative h-[34px] w-[34px] min-w-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
                   pendingProofsCount > 0
-                    ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-xs'
-                    : 'border-slate-200 text-slate-700 hover:bg-slate-100'
+                    ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-2xs'
+                    : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-amber-950 shadow-2xs hover:shadow-xs'
                 }`}
                 aria-label={isAr ? 'التنبيهات وبروفات التصاميم' : 'Design Proof Notifications'}
                 title={isAr ? 'بروفات التصاميم والتنبيهات' : 'Notifications'}
               >
-                <Bell className={`w-5 h-5 ${pendingProofsCount > 0 ? 'text-amber-700' : 'text-slate-700'}`} />
+                <Bell className={`w-4 h-4 ${pendingProofsCount > 0 ? 'text-amber-700' : 'text-slate-700'}`} />
                 {pendingProofsCount > 0 && (
-                  <span className="absolute -top-1.5 -end-1.5 w-5 h-5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                  <span className="absolute -top-1 -end-1 w-4 h-4 bg-amber-500 text-slate-950 text-[9px] font-black rounded-full flex items-center justify-center animate-bounce shadow-xs">
                     {pendingProofsCount}
                   </span>
                 )}
@@ -369,22 +430,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Cart Button */}
+            {/* 3. Shopping Cart (Icon-only: 34px x 34px) */}
             <button
               onClick={() => setCartOpen(true)}
               type="button"
-              className="relative p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+              className="relative h-[34px] w-[34px] min-w-[34px] rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-purple-700 shadow-2xs hover:shadow-xs transition-colors flex items-center justify-center cursor-pointer"
               aria-label={t('nav.cart')}
+              title={isAr ? 'سلة المشتريات والطلبات' : 'Shopping Cart'}
             >
-              <ShoppingBag className="w-5 h-5 text-slate-700" />
+              <ShoppingBag className="w-4 h-4 text-slate-700 hover:text-purple-700 transition-colors" />
               {totalCartCount > 0 && (
-                <span className="absolute -top-1.5 -end-1.5 w-5 h-5 bg-purple-600 text-white text-[11px] font-bold rounded-full flex items-center justify-center animate-scale">
+                <span className="absolute -top-1 -end-1 w-4 h-4 bg-purple-600 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-scale shadow-xs">
                   {totalCartCount}
                 </span>
               )}
             </button>
 
-            {/* Auth / Customer Account Button */}
+            {/* 4. User Account / Sign In (Medium Button: 34px height) */}
             {isAuthenticated && user ? (
               <div className="relative">
                 <button
@@ -393,16 +455,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     if (notificationMenuOpen) setNotificationMenuOpen(false);
                   }}
                   type="button"
-                  className="flex items-center gap-2 p-1.5 pe-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="h-[34px] px-2 sm:px-2.5 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs"
+                  title={isAr ? 'حساب العميل والطلبات' : 'Customer Account'}
                 >
-                  <div className="w-7 h-7 rounded-lg bg-amber-900 text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-5 h-5 rounded-md bg-amber-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
                     {user.fullName.charAt(0)}
                   </div>
-                  <span className="text-xs font-bold text-slate-800 hidden sm:inline max-w-[100px] truncate">
+                  <span className="text-[11px] font-bold text-slate-800 hidden sm:inline max-w-[80px] truncate">
                     {user.fullName.split(' ')[0]}
                   </span>
                   {pendingProofsCount > 0 && (
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                   )}
                 </button>
 
@@ -471,31 +534,34 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onOpenAuthModal}
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold transition-colors cursor-pointer"
+                className="h-[34px] px-2 sm:px-2.5 rounded-lg border border-purple-200/90 bg-purple-50/80 hover:bg-purple-100 text-purple-900 text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs shrink-0"
+                title={isAr ? 'تسجيل الدخول / إنشاء حساب' : 'Sign In'}
               >
-                <User className="w-3.5 h-3.5" />
-                <span>{isAr ? 'تسجيل الدخول' : 'Sign In'}</span>
+                <User className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                <span className="hidden sm:inline">{isAr ? 'تسجيل الدخول' : 'Sign In'}</span>
               </button>
             )}
 
-            {/* Request Design CTA */}
+            {/* 5. Request Custom Design CTA (Largest Button: 34px height, sleek luxury CTA) */}
             <button
               onClick={() => onOpenCustomizer()}
               type="button"
-              className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-900 hover:bg-amber-800 text-white shadow-xs transition-all cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 h-[34px] px-3 sm:px-3.5 rounded-lg text-[11px] sm:text-xs font-black bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 hover:from-amber-800 hover:to-amber-900 text-white shadow-xs hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shrink-0"
+              title={isAr ? 'طلب وتجهيز تصميم مخصص' : 'Request Custom Design'}
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span>{isAr ? 'طلب وتجهيز تصميم 🎨' : 'Request Custom Design 🎨'}</span>
             </button>
 
-            {/* Mobile Hamburger Toggle */}
+            {/* 6. Mobile Hamburger Toggle (Side Menu Trigger - 34px x 34px) */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               type="button"
-              className="lg:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 focus:outline-none"
-              aria-label="Toggle mobile menu"
+              className="lg:hidden h-[34px] w-[34px] min-w-[34px] rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-800 flex items-center justify-center cursor-pointer shadow-2xs shrink-0 transition-transform active:scale-95"
+              aria-label={isAr ? 'فتح القائمة الجانبية' : 'Toggle navigation menu'}
+              title={isAr ? 'القائمة الجانبية' : 'Navigation Menu'}
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-4 h-4 text-amber-950" /> : <Menu className="w-4 h-4 text-amber-950" />}
             </button>
           </div>
         </div>
@@ -514,9 +580,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   key={link.href}
                   onClick={() => handleLinkClick(link.href)}
                   type="button"
-                  className="w-full text-start px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors cursor-pointer"
+                  className={`w-full text-start px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                    link.isOffers
+                      ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-950 font-bold border border-amber-200'
+                      : 'text-slate-700 hover:bg-purple-50 hover:text-purple-700'
+                  }`}
                 >
-                  {link.label}
+                  <span className="flex items-center gap-2">
+                    {link.isOffers && <Flame className="w-4 h-4 text-amber-600 animate-pulse" />}
+                    <span>{link.label}</span>
+                  </span>
+                  {link.isOffers && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
+                      {isAr ? 'تخفيضات 33%' : '33% OFF'}
+                    </span>
+                  )}
                 </button>
               ))}
 

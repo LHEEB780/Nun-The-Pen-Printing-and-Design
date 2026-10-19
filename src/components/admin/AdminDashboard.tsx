@@ -7,6 +7,7 @@ import { ProductManagementTab } from './ProductManagementTab';
 import { OrderManagementTab } from './OrderManagementTab';
 import { UserManagementTab } from './UserManagementTab';
 import { ContentManagementTab } from './ContentManagementTab';
+import { OffersManagementTab } from './OffersManagementTab';
 import {
   BarChart3,
   Sliders,
@@ -23,19 +24,33 @@ import {
   Info,
   FileText,
   Unlock,
+  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+export type AdminDashboardTab =
+  | 'analytics'
+  | 'offers'
+  | 'form_builder'
+  | 'products'
+  | 'orders'
+  | 'users'
+  | 'content';
+
 interface AdminDashboardProps {
   onBackToStore: () => void;
+  initialTab?: AdminDashboardTab;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  onBackToStore,
+  initialTab = 'analytics',
+}) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { currentRole, setCurrentRole } = useAdminStore();
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'form_builder' | 'products' | 'orders' | 'users' | 'content'>('analytics');
+  const [activeTab, setActiveTab] = useState<AdminDashboardTab>(initialTab);
 
   // Role metadata and accessible tabs definition
   const roleConfig: Record<
@@ -44,7 +59,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
       titleAr: string;
       titleEn: string;
       badgeClass: string;
-      allowedTabs: Array<'analytics' | 'form_builder' | 'products' | 'orders' | 'users' | 'content'>;
+      allowedTabs: AdminDashboardTab[];
       descriptionAr: string;
       descriptionEn: string;
     }
@@ -53,17 +68,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: ['analytics', 'form_builder', 'products', 'orders', 'users', 'content'],
-      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة المحتوى والمقالات، بناء النماذج، تسعير المنتجات، والتحكم بالأدوار.',
-      descriptionEn: 'Full system privileges: Analytics, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
+      allowedTabs: ['analytics', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
+      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة عروض الموسم والتخفيضات، إدارة المحتوى والمقالات، بناء النماذج، وتسعير المنتجات.',
+      descriptionEn: 'Full system privileges: Analytics, Seasonal Deals, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
     },
     sales_manager: {
       titleAr: 'مدير المبيعات (Sales Manager)',
       titleEn: 'Sales Manager',
       badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-      allowedTabs: ['analytics', 'orders'],
-      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، إدارة فواتير الطلبات، وتأكيد بوابات الدفع (زين كاش / FIB).',
-      descriptionEn: 'Sales permissions: Revenue charts, customer orders tracking, and payment validation.',
+      allowedTabs: ['analytics', 'offers', 'orders'],
+      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، إدارة عروض وتخفيضات الموسم، فواتير الطلبات، وبوابات الدفع.',
+      descriptionEn: 'Sales permissions: Revenue charts, promotional campaigns & seasonal offers, and customer orders tracking.',
     },
     inventory_manager: {
       titleAr: 'مدير المخزن والخامات (Inventory Manager)',
@@ -86,7 +101,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
   const currentConfig = roleConfig[currentRole];
 
   // Auto switch tab and handle smooth access
-  const handleSelectTab = (tab: 'analytics' | 'form_builder' | 'products' | 'orders' | 'users' | 'content') => {
+  const handleSelectTab = (tab: AdminDashboardTab) => {
     if (!currentConfig.allowedTabs.includes(tab)) {
       // Auto-elevate to super_admin so admin tabs are never stuck
       setCurrentRole('super_admin');
@@ -196,6 +211,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
               icon: BarChart3,
             },
             {
+              id: 'offers' as const,
+              labelAr: 'عروض الموسم والتخفيضات',
+              labelEn: 'Seasonal Deals & Offers',
+              icon: Tag,
+            },
+            {
               id: 'content' as const,
               labelAr: 'إدارة المحتوى والمقالات (CMS)',
               labelEn: 'CMS Content & Articles',
@@ -256,6 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToStore })
         {/* Tab Content Display */}
         <div className="pt-2">
           {activeTab === 'analytics' && <AnalyticsTab />}
+          {activeTab === 'offers' && <OffersManagementTab />}
           {activeTab === 'content' && <ContentManagementTab />}
           {activeTab === 'form_builder' && <FormBuilderTab />}
           {activeTab === 'products' && <ProductManagementTab />}

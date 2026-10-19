@@ -5,7 +5,7 @@ import { COMPANY_CONTACT } from '../../data/mockData';
 import { useContentStore, QuickLinkSectionKey } from '../../store/useContentStore';
 
 interface FooterProps {
-  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty', specialtyId?: any) => void;
+  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: any) => void;
   onOpenCustomizer?: (productId?: string) => void;
 }
 
@@ -17,7 +17,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
   const quickLinksConfig: Array<{ key: QuickLinkSectionKey; defaultTitleAr: string; defaultTitleEn: string; href: string }> = [
     { key: 'home', defaultTitleAr: 'الرئيسية', defaultTitleEn: 'Home', href: '#home' },
     { key: 'services', defaultTitleAr: 'خدماتنا', defaultTitleEn: 'Our Services', href: '#services' },
-    { key: 'portfolio', defaultTitleAr: 'معرض الأعمال', defaultTitleEn: 'Portfolio', href: '#portfolio' },
+    { key: 'portfolio', defaultTitleAr: 'معرض الأعمال المنفذة', defaultTitleEn: 'Executed Works Portfolio', href: '#portfolio' },
     { key: 'custom_products', defaultTitleAr: 'منتجات مخصصة', defaultTitleEn: 'Custom Products', href: '#shop' },
     { key: 'why_us', defaultTitleAr: 'لماذا نون والقلم؟', defaultTitleEn: 'Why Noon & Pen?', href: '#why-us' },
     { key: 'contact', defaultTitleAr: 'تواصل معنا', defaultTitleEn: 'Contact Us', href: '#contact' },
@@ -25,6 +25,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
 
   const handleLinkClick = (key: QuickLinkSectionKey, href: string, e: React.MouseEvent) => {
     e.preventDefault();
+    if (key === 'portfolio') {
+      if (onNavigate) {
+        onNavigate('portfolio');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
     const article = getArticleBySection(key);
     if (article) {
       setSelectedArticleId(article.id);
@@ -113,12 +120,23 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
                       className="group flex items-center justify-between w-full text-start py-1 text-slate-600 hover:text-purple-700 transition-colors"
                       title={isAr ? `قراءة مقال وتفاصيل: ${displayTitle}` : `Read article & details: ${displayTitle}`}
                     >
-                      <span className="font-medium group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform">
+                      <span className={`font-medium group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform flex items-center gap-1.5 ${link.key === 'portfolio' ? 'text-purple-900 font-bold' : ''}`}>
                         {displayTitle}
+                        {link.key === 'portfolio' && (
+                          <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-purple-100 text-purple-700 font-bold border border-purple-200">
+                            {isAr ? 'معرض الصور' : 'Gallery'}
+                          </span>
+                        )}
                       </span>
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-purple-600 flex items-center gap-0.5">
-                        <BookOpen className="w-3 h-3" />
-                        <span className="text-[10px]">{isAr ? 'مقال' : 'Article'}</span>
+                      <span className={`transition-opacity text-[11px] text-purple-600 flex items-center gap-0.5 ${link.key === 'portfolio' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        {link.key === 'portfolio' ? (
+                          <span className="text-[10px] text-purple-600 font-semibold">{isAr ? 'عرض' : 'View'}</span>
+                        ) : (
+                          <>
+                            <BookOpen className="w-3 h-3" />
+                            <span className="text-[10px]">{isAr ? 'مقال' : 'Article'}</span>
+                          </>
+                        )}
                       </span>
                     </button>
                   </li>
@@ -135,6 +153,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
             </h4>
             <ul className="space-y-2 text-xs text-slate-600">
               {[
+                { labelAr: '🏷️ عروض الموسم والتخفيضات الكبرى (خصم 33%)', labelEn: '🏷️ Grand Seasonal Offers (33% OFF)', isOffers: true },
                 { labelAr: 'لوحات أكريليك مضيئة LED', labelEn: '3D LED Acrylic Signs', catId: 'led' },
                 { labelAr: 'علب كرتون مقوى فاخرة (Rigid Boxes)', labelEn: 'Rigid Gift Box Packaging', catId: 'boxes' },
                 { labelAr: 'كروت أعمال وبصمة حرارية', labelEn: 'Hot-Foil Business Cards', catId: 'cards' },
@@ -146,7 +165,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
                   <button
                     type="button"
                     onClick={() => {
-                      if (onNavigate) {
+                      if (item.isOffers && onNavigate) {
+                        onNavigate('offers');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } else if (onNavigate) {
                         onNavigate('shop');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       } else {
@@ -154,9 +176,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
                         if (el) el.scrollIntoView({ behavior: 'smooth' });
                       }
                     }}
-                    className="flex items-center gap-2 text-slate-600 hover:text-purple-700 transition-colors py-0.5 text-start cursor-pointer w-full group"
+                    className={`flex items-center gap-2 py-0.5 text-start cursor-pointer w-full group transition-colors ${
+                      item.isOffers
+                        ? 'text-amber-900 font-bold hover:text-amber-700'
+                        : 'text-slate-600 hover:text-purple-700'
+                    }`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:scale-125 transition-transform" />
+                    <span className={`w-1.5 h-1.5 rounded-full transition-transform ${
+                      item.isOffers ? 'bg-amber-500 scale-125' : 'bg-purple-400 group-hover:scale-125'
+                    }`} />
                     <span className="group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform">
                       {isAr ? item.labelAr : item.labelEn}
                     </span>

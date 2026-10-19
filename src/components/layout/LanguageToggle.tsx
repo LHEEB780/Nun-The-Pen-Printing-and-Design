@@ -4,19 +4,20 @@ import { Globe, Check } from 'lucide-react';
 
 interface LanguageToggleProps {
   /**
-   * 'segmented': Sleek dual-pill toggle showing both languages side-by-side
-   * 'compact': Minimal button showing the alternative language to switch to
-   * 'expanded': Full-width selector suitable for mobile drawers
+   * 'single': (Default) Single sleek button displaying the opposite language to switch to
+   * 'compact': Minimal icon/pill format
+   * 'expanded': Full-width selector for mobile drawer
+   * 'segmented': Backward-compatible legacy option fallback
    */
-  variant?: 'segmented' | 'compact' | 'expanded';
+  variant?: 'single' | 'compact' | 'segmented' | 'expanded';
   className?: string;
   showIcon?: boolean;
 }
 
 export const LanguageToggle: React.FC<LanguageToggleProps> = ({
-  variant = 'segmented',
+  variant = 'single',
   className = '',
-  showIcon = false,
+  showIcon = true,
 }) => {
   const { i18n } = useTranslation();
   const currentLang = (i18n.language || 'ar').startsWith('en') ? 'en' : 'ar';
@@ -24,13 +25,13 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
 
   const switchLanguage = (newLang: 'ar' | 'en') => {
     if (newLang === currentLang) return;
-    
+
     i18n.changeLanguage(newLang);
     // Explicitly guarantee DOM direction and language update immediately
     const nextDir = newLang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.dir = nextDir;
     document.documentElement.lang = newLang;
-    
+
     try {
       localStorage.setItem('i18nextLng', newLang);
     } catch {
@@ -42,143 +43,63 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
     switchLanguage(isArabic ? 'en' : 'ar');
   };
 
-  // Compact Variant (Single button that flips language on click)
-  if (variant === 'compact') {
-    return (
-      <button
-        onClick={toggleLanguage}
-        type="button"
-        className={`group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/90 bg-white/90 hover:bg-slate-50 text-xs font-semibold text-slate-700 hover:text-purple-700 shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500/30 ${className}`}
-        title={isArabic ? 'Switch interface to English (LTR)' : 'تحويل الواجهة إلى العربية (RTL)'}
-        aria-label={isArabic ? 'Switch to English' : 'التحويل إلى العربية'}
-      >
-        {showIcon && (
-          <Globe className="w-3.5 h-3.5 text-purple-600 group-hover:rotate-45 transition-transform duration-300" />
-        )}
-        <span className="tracking-wide">
-          {isArabic ? (
-            <span className="flex items-center gap-1">
-              <span className="text-purple-700 font-bold">EN</span>
-              <span className="text-[10px] text-slate-400 font-normal">LTR</span>
-            </span>
-          ) : (
-            <span className="flex items-center gap-1">
-              <span className="text-purple-700 font-bold">عربي</span>
-              <span className="text-[10px] text-slate-400 font-normal">RTL</span>
-            </span>
-          )}
-        </span>
-      </button>
-    );
-  }
-
-  // Expanded Variant (Mobile menu full-width switcher with active badges)
+  // Expanded Variant (Mobile menu drawer)
   if (variant === 'expanded') {
     return (
-      <div className={`w-full bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex flex-col gap-1.5 ${className}`}>
-        <div className="flex items-center justify-between px-2 pt-1 pb-0.5">
-          <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-purple-600" />
-            <span>{isArabic ? 'لغة الواجهة والاتجاه' : 'Language & Layout Direction'}</span>
+      <div className={`w-full bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 flex flex-col gap-2 ${className}`}>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5 text-amber-700" />
+            <span>{isArabic ? 'اللغة والاتجاه' : 'Language & Direction'}</span>
           </span>
-          <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200/60">
-            {isArabic ? 'RTL راست' : 'LTR Left-to-Right'}
+          <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300/60">
+            {isArabic ? 'المفعلة: العربية (RTL)' : 'Active: English (LTR)'}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Language selection">
-          {/* Arabic Option */}
-          <button
-            type="button"
-            onClick={() => switchLanguage('ar')}
-            role="radio"
-            aria-checked={isArabic}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-              isArabic
-                ? 'bg-white text-purple-900 shadow-xs border border-purple-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center text-[11px] font-black">
-                ع
-              </span>
-              <div className="text-start">
-                <p className="font-bold text-slate-900 leading-tight">العربية</p>
-                <p className="text-[10px] text-slate-400 font-normal">RTL (من اليمين لليسار)</p>
-              </div>
+        {/* Quick 1-tap flip button showing opposite language */}
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white hover:bg-amber-50/50 border border-amber-300 text-xs font-bold text-slate-900 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center text-xs font-black">
+              {isArabic ? 'EN' : 'ع'}
+            </span>
+            <div className="text-start">
+              <p className="font-bold text-slate-900 leading-tight">
+                {isArabic ? 'التحويل إلى English' : 'Switch to العربية'}
+              </p>
+              <p className="text-[10px] text-slate-400 font-normal">
+                {isArabic ? 'Left-to-Right interface' : 'واجهة من اليمين إلى اليسار'}
+              </p>
             </div>
-            {isArabic && <Check className="w-4 h-4 text-purple-600" />}
-          </button>
-
-          {/* English Option */}
-          <button
-            type="button"
-            onClick={() => switchLanguage('en')}
-            role="radio"
-            aria-checked={!isArabic}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-              !isArabic
-                ? 'bg-white text-purple-900 shadow-xs border border-purple-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-md bg-sky-100 text-sky-800 flex items-center justify-center text-[11px] font-black">
-                EN
-              </span>
-              <div className="text-start">
-                <p className="font-bold text-slate-900 leading-tight">English</p>
-                <p className="text-[10px] text-slate-400 font-normal">LTR (Left-to-Right)</p>
-              </div>
-            </div>
-            {!isArabic && <Check className="w-4 h-4 text-purple-600" />}
-          </button>
-        </div>
+          </div>
+          <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+            {isArabic ? 'Switch to English' : 'تحويل للعربية'}
+          </span>
+        </button>
       </div>
     );
   }
 
-  // Segmented Pill Variant (Default for Desktop Navbar) - Perfectly Equal & Compact (No Globe Icon)
+  // Single Compact Opposite Language Button (Shrunk to ensure side menu and all navbar items appear cleanly):
+  // When active language is Arabic -> Shows compact 'EN' with globe
+  // When active language is English -> Shows compact 'عربي' with globe
   return (
-    <div
-      className={`relative inline-flex items-center bg-slate-100/90 hover:bg-slate-200/60 p-0.5 sm:p-1 rounded-xl border border-slate-200/90 shadow-2xs transition-colors ${className}`}
-      role="radiogroup"
-      aria-label="Language and direction switch"
+    <button
+      onClick={toggleLanguage}
+      type="button"
+      className={`group relative inline-flex items-center justify-center gap-1 h-[34px] px-2 rounded-lg border border-slate-200/90 bg-white/95 hover:bg-slate-50 text-slate-700 hover:text-amber-950 hover:border-amber-400/80 shadow-2xs hover:shadow-xs transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/20 shrink-0 ${className}`}
+      title={isArabic ? 'Switch interface to English (LTR)' : 'تحويل الواجهة إلى العربية (RTL)'}
+      aria-label={isArabic ? 'Switch to English' : 'التحويل إلى العربية'}
     >
-      <div className="grid grid-cols-2 gap-1 w-24 sm:w-28">
-        {/* Arabic Button */}
-        <button
-          type="button"
-          onClick={() => switchLanguage('ar')}
-          role="radio"
-          aria-checked={isArabic}
-          className={`h-7 w-full flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
-            isArabic
-              ? 'bg-white text-purple-900 shadow-xs border border-purple-200/70 font-black'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-          }`}
-          title="التحويل إلى اللغة العربية (اتجاه RTL)"
-        >
-          <span>عربي</span>
-        </button>
-
-        {/* English Button */}
-        <button
-          type="button"
-          onClick={() => switchLanguage('en')}
-          role="radio"
-          aria-checked={!isArabic}
-          className={`h-7 w-full flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
-            !isArabic
-              ? 'bg-white text-purple-900 shadow-xs border border-purple-200/70 font-black'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-          }`}
-          title="Switch to English (LTR layout)"
-        >
-          <span>English</span>
-        </button>
-      </div>
-    </div>
+      <Globe className="w-3.5 h-3.5 text-amber-700 group-hover:rotate-45 transition-transform duration-300 shrink-0" />
+      <span className="text-[11px] font-black tracking-tight text-slate-800 group-hover:text-amber-950">
+        {isArabic ? 'EN' : 'عربي'}
+      </span>
+    </button>
   );
 };
+

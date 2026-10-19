@@ -8,7 +8,7 @@ import './i18n/index.ts';
 import { Navbar } from './components/layout/Navbar';
 import { HeroSection } from './components/home/HeroSection';
 import { ServicesSection } from './components/home/ServicesSection';
-import { PortfolioSection } from './components/home/PortfolioSection';
+import { PortfolioPage } from './components/portfolio/PortfolioPage';
 import { ShopSection } from './components/home/ShopSection';
 import { CategoryShowcaseSection } from './components/home/CategoryShowcaseSection';
 import { SpecialtyGatewaysSection, SpecialtyId } from './components/home/SpecialtyGatewaysSection';
@@ -22,7 +22,8 @@ import { ProductDetailPage } from './components/product/ProductDetailPage';
 import { CheckoutPage } from './components/checkout/CheckoutPage';
 import { OrderConfirmationPage } from './components/checkout/OrderConfirmationPage';
 import { CustomerDashboard } from './components/dashboard/CustomerDashboard';
-import { AdminDashboard } from './components/admin/AdminDashboard';
+import { AdminDashboard, AdminDashboardTab } from './components/admin/AdminDashboard';
+import { SeasonalOffersPage } from './components/offers/SeasonalOffersPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { CustomizerModal } from './components/customizer/CustomizerModal';
 import { CartDrawer } from './components/cart/CartDrawer';
@@ -34,7 +35,8 @@ import { OrderRecord, useCartStore } from './store/useCartStore';
 import { useAuthStore } from './store/useAuthStore';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio'>('home');
+  const [adminInitialTab, setAdminInitialTab] = useState<AdminDashboardTab>('analytics');
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<SpecialtyId>('boxes');
   const [selectedProductId, setSelectedProductId] = useState<string>('prod-acrylic-led-sign');
   const [customizerOpen, setCustomizerOpen] = useState(false);
@@ -68,7 +70,7 @@ export default function App() {
     setCustomizerInitialId(undefined);
   };
 
-  const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty', specialtyId?: SpecialtyId) => {
+  const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: SpecialtyId) => {
     if (view === 'dashboard' && !isAuthenticated) {
       setAuthModalOpen(true);
       return;
@@ -105,6 +107,8 @@ export default function App() {
             <HeroSection
               onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
               onSelectSpecialty={handleSelectSpecialty}
+              onNavigateToOffers={() => handleNavigate('offers')}
+              onNavigateToPortfolio={() => handleNavigate('portfolio')}
             />
             {/* The 4 Grand Specialty Gateways (Pacdora-inspired primary landing architecture) */}
             <SpecialtyGatewaysSection
@@ -114,9 +118,7 @@ export default function App() {
             <ServicesSection
               onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
             />
-            <PortfolioSection
-              onOpenCustomizer={(pid) => (pid ? handleSelectProduct(pid) : handleOpenCustomizer())}
-            />
+            {/* Note: PortfolioSection removed from Home page per user request, moved to Footer Quick Links */}
             <WhyUsSection />
             <TestimonialsSection />
             <ContactSection />
@@ -173,9 +175,31 @@ export default function App() {
           />
         )}
 
+        {currentView === 'offers' && (
+          <SeasonalOffersPage
+            onBackToHome={() => handleNavigate('home')}
+            onBrowseShop={() => handleNavigate('shop')}
+            onSelectProduct={handleSelectProduct}
+            onOpenCustomizerModal={handleOpenCustomizer}
+            onNavigateToAdmin={() => {
+              setAdminInitialTab('offers');
+              handleNavigate('admin');
+            }}
+          />
+        )}
+
         {currentView === 'admin' && (
           <AdminDashboard
             onBackToStore={() => handleNavigate('shop')}
+            initialTab={adminInitialTab}
+          />
+        )}
+
+        {currentView === 'portfolio' && (
+          <PortfolioPage
+            onBackToHome={() => handleNavigate('home')}
+            onOpenCustomizer={handleOpenCustomizer}
+            onSelectProduct={handleSelectProduct}
           />
         )}
       </main>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Package,
@@ -11,14 +11,10 @@ import {
   Layers,
   ShieldCheck,
   Compass,
-  Search,
-  X,
   Tag,
   ArrowUpRight,
   SlidersHorizontal,
 } from 'lucide-react';
-import { useAdminStore } from '../../store/useAdminStore';
-import { PRODUCTS, ProductItem } from '../../data/mockData';
 
 export type SpecialtyId = 'boxes' | 'led' | 'cards' | 'occasions';
 
@@ -194,74 +190,10 @@ interface SpecialtyGatewaysSectionProps {
 
 export const SpecialtyGatewaysSection: React.FC<SpecialtyGatewaysSectionProps> = ({
   onSelectSpecialty,
-  onSelectProduct,
+  onSelectProduct: _onSelectProduct,
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-
-  const adminProducts = useAdminStore((state) => state.adminProducts);
-  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
-
-  // Map category to specialty metadata
-  const getProductSpecialty = (prod: ProductItem): {
-    id: SpecialtyId;
-    titleAr: string;
-    titleEn: string;
-    icon: React.ElementType;
-    color: string;
-  } => {
-    if (prod.category === 'boxes') {
-      return { id: 'boxes', titleAr: 'استوديو العلب الكرتونية', titleEn: 'Packaging Studio', icon: Package, color: 'text-amber-800 bg-amber-50 border-amber-200' };
-    }
-    if (prod.category === 'led') {
-      return { id: 'led', titleAr: 'استوديو الأكريليك و LED', titleEn: 'Acrylic & LED Studio', icon: Sparkles, color: 'text-purple-800 bg-purple-50 border-purple-200' };
-    }
-    if (prod.category === 'cards') {
-      return { id: 'cards', titleAr: 'استوديو كروت الأعمال', titleEn: 'Business Cards Studio', icon: CreditCard, color: 'text-sky-800 bg-sky-50 border-sky-200' };
-    }
-    return { id: 'occasions', titleAr: 'استوديو الهدايا والمناسبات', titleEn: 'Keepsakes Studio', icon: HeartHandshake, color: 'text-rose-800 bg-rose-50 border-rose-200' };
-  };
-
-  // Close search dropdown on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setIsSearchOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
-
-  // Filter products matching search across all 4 specialties
-  const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-    return productsList
-      .filter((p) => {
-        return (
-          p.titleAr.toLowerCase().includes(q) ||
-          p.titleEn.toLowerCase().includes(q) ||
-          p.descriptionAr.toLowerCase().includes(q) ||
-          p.descriptionEn.toLowerCase().includes(q) ||
-          (p.categoryLabelAr && p.categoryLabelAr.toLowerCase().includes(q)) ||
-          (p.categoryLabelEn && p.categoryLabelEn.toLowerCase().includes(q))
-        );
-      })
-      .slice(0, 8); // Top 8 results
-  }, [searchQuery, productsList]);
-
-  const quickSearches = [
-    { labelAr: 'علب هدايا فاخرة', labelEn: 'Rigid Gift Boxes', query: 'علب' },
-    { labelAr: 'دروع تكريم 3D LED', labelEn: '3D LED Trophies', query: 'درع' },
-    { labelAr: 'كروت بصمة ذهبية', labelEn: 'Gold Foil Cards', query: 'بصمة' },
-    { labelAr: 'لوحات زفاف ديواني', labelEn: 'Wedding Plaques', query: 'زفاف' },
-    { labelAr: 'لوحات مكاتب أكريليك', labelEn: 'Acrylic Desk Signs', query: 'أكريليك' },
-  ];
 
   return (
     <section id="specialties" className="py-20 bg-gradient-to-b from-white via-slate-50/70 to-slate-100/90 relative overflow-hidden">
@@ -272,7 +204,7 @@ export const SpecialtyGatewaysSection: React.FC<SpecialtyGatewaysSectionProps> =
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header (Pacdora-inspired Gateway Header) */}
-        <div className="text-center max-w-3xl mx-auto mb-10 space-y-4">
+        <div className="text-center max-w-3xl mx-auto mb-14 sm:mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-900 bg-amber-50 border border-amber-200/80 px-3.5 py-1.5 rounded-xl shadow-2xs">
             <Compass className="w-3.5 h-3.5 text-amber-700" />
             <span>{isAr ? 'بوابة استوديوهات نُون والقَلَم المتخصصة' : 'Noon & Pen Specialized Production Studios'}</span>
@@ -304,180 +236,6 @@ export const SpecialtyGatewaysSection: React.FC<SpecialtyGatewaysSectionProps> =
               <span>{isAr ? 'تخصيص كامل للأبعاد والخامات' : 'Full Custom Sizing & Specs'}</span>
             </span>
           </div>
-        </div>
-
-        {/* Quick Search Bar Component across the 4 Specialty Studios */}
-        <div ref={searchContainerRef} className="max-w-2xl mx-auto mb-14 relative z-20">
-          <div className="relative bg-white rounded-2xl border-2 border-amber-900/20 hover:border-amber-900/50 focus-within:border-amber-900 shadow-md transition-all">
-            <div className="flex items-center px-4 py-3 sm:py-3.5 gap-3">
-              <Search className="w-5 h-5 text-amber-800 shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setIsSearchOpen(true);
-                }}
-                onFocus={() => setIsSearchOpen(true)}
-                placeholder={
-                  isAr
-                    ? 'ابحث بالاسم أو الخامة داخل الاختصاصات الأربعة (علب، أكريليك، كروت، هدايا)...'
-                    : 'Search by model or material across all 4 studios (boxes, acrylic, cards, gifts)...'
-                }
-                className="w-full text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setIsSearchOpen(false);
-                  }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                  title={isAr ? 'مسح البحث' : 'Clear Search'}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Search Keywords / Shortcuts */}
-          <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto no-scrollbar px-1 text-xs text-slate-500">
-            <span className="font-bold text-[11px] text-slate-400 shrink-0">
-              {isAr ? 'أكثر بحثاً:' : 'Popular:'}
-            </span>
-            {quickSearches.map((item, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setSearchQuery(item.query);
-                  setIsSearchOpen(true);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-200 hover:border-amber-300 text-[11px] font-semibold transition-colors shrink-0 cursor-pointer"
-              >
-                {isAr ? item.labelAr : item.labelEn}
-              </button>
-            ))}
-          </div>
-
-          {/* Live Search Results Dropdown Panel */}
-          {isSearchOpen && searchQuery.trim().length > 0 && (
-            <div className="absolute top-full start-0 end-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-scale max-h-[480px] overflow-y-auto z-50">
-              
-              {/* Results Top Header */}
-              <div className="p-3.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800">
-                  {isAr
-                    ? `نتائج البحث عن "${searchQuery}" (${searchResults.length} منتجات):`
-                    : `Results for "${searchQuery}" (${searchResults.length} items):`}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsSearchOpen(false)}
-                  className="text-slate-400 hover:text-slate-700 font-semibold cursor-pointer"
-                >
-                  {isAr ? 'إغلاق' : 'Close'}
-                </button>
-              </div>
-
-              {/* Items List */}
-              {searchResults.length > 0 ? (
-                <div className="divide-y divide-slate-100">
-                  {searchResults.map((prod) => {
-                    const specialty = getProductSpecialty(prod);
-                    const SpecIcon = specialty.icon;
-
-                    return (
-                      <div
-                        key={prod.id}
-                        onClick={() => {
-                          setIsSearchOpen(false);
-                          if (onSelectProduct) {
-                            onSelectProduct(prod.id);
-                          } else {
-                            onSelectSpecialty(specialty.id);
-                          }
-                        }}
-                        className="p-3.5 hover:bg-amber-50/50 transition-colors flex items-center justify-between gap-3 cursor-pointer group"
-                      >
-                        {/* Thumbnail & Title */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-slate-200">
-                            <img
-                              src={prod.image}
-                              alt={isAr ? prod.titleAr : prod.titleEn}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${specialty.color}`}>
-                                <SpecIcon className="w-3 h-3" />
-                                <span>{isAr ? specialty.titleAr : specialty.titleEn}</span>
-                              </span>
-                            </div>
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate group-hover:text-amber-900">
-                              {isAr ? prod.titleAr : prod.titleEn}
-                            </h4>
-                            <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                              {isAr ? prod.descriptionAr : prod.descriptionEn}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Price & Action */}
-                        <div className="text-end shrink-0 ps-2">
-                          <span className="block text-xs font-black text-slate-900">
-                            {prod.basePrice.toLocaleString()} د.ع
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-800 font-bold group-hover:underline mt-0.5">
-                            <span>{isAr ? 'عرض' : 'View'}</span>
-                            {isAr ? <ArrowLeft className="w-3 h-3" /> : <ArrowRight className="w-3 h-3" />}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="p-8 text-center space-y-2">
-                  <p className="text-sm font-bold text-slate-800">
-                    {isAr ? 'لم يتم العثور على منتجات مطابقة لهذا البحث' : 'No products matched your search'}
-                  </p>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    {isAr
-                      ? 'يمكنك تصفح أحد الاستوديوهات الأربعة أدناه مباشرة أو التواصل مع فريق الورشة لتنفيذ طلب مخصص.'
-                      : 'You can explore one of our four specialized studios directly below or contact us for a custom job.'}
-                  </p>
-                </div>
-              )}
-
-              {/* Bottom Quick Hub Navigation Row */}
-              <div className="p-3 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="text-slate-500 font-medium">
-                  {isAr ? 'أو تصفح الاستوديو بالكامل:' : 'Or browse full studio:'}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {SPECIALTY_GATEWAYS.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => {
-                        setIsSearchOpen(false);
-                        onSelectSpecialty(g.id);
-                      }}
-                      className="px-2 py-1 rounded-md bg-white hover:bg-slate-200 text-slate-700 text-[10px] font-bold border border-slate-200 transition-colors cursor-pointer"
-                    >
-                      {isAr ? g.titleAr.replace('استوديو ', '') : g.titleEn.replace(' Studio', '')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          )}
         </div>
 
         {/* 4 Majestic Gateways Grid (Wide, High-Prestige Portals) */}

@@ -13,6 +13,7 @@ import {
   HeartHandshake,
   Compass,
   Award,
+  Flame,
 } from 'lucide-react';
 import { COMPANY_CONTACT } from '../../data/mockData';
 import { SpecialtyId } from './SpecialtyGatewaysSection';
@@ -20,11 +21,15 @@ import { SpecialtyId } from './SpecialtyGatewaysSection';
 interface HeroSectionProps {
   onOpenCustomizer?: (productId?: string) => void;
   onSelectSpecialty?: (specialtyId: SpecialtyId) => void;
+  onNavigateToOffers?: () => void;
+  onNavigateToPortfolio?: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenCustomizer,
   onSelectSpecialty,
+  onNavigateToOffers,
+  onNavigateToPortfolio,
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -116,14 +121,28 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Left/Main Column: Brand Story & Studio Authority (7 Cols) */}
           <div className="lg:col-span-7 space-y-6 text-start">
             
-            {/* Atelier Kicker with Artisan Gold Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50/90 border border-amber-200/80 text-amber-950 text-xs font-bold tracking-tight shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>
-                {isAr
-                  ? 'دار نُون والقَلَم · ورشة الطباعة والتصميم الفاخر في بغداد'
-                  : 'Noon & Pen Atelier · Luxury Printing & Craft Studio · Baghdad'}
-              </span>
+            {/* Atelier Kicker with Artisan Gold Badge & Seasonal Offers Direct Link */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50/90 border border-amber-200/80 text-amber-950 text-xs font-bold tracking-tight shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>
+                  {isAr
+                    ? 'دار نُون والقَلَم · ورشة الطباعة والتصميم الفاخر في بغداد'
+                    : 'Noon & Pen Atelier · Luxury Printing & Craft Studio · Baghdad'}
+                </span>
+              </div>
+
+              {onNavigateToOffers && (
+                <button
+                  type="button"
+                  onClick={onNavigateToOffers}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-400 text-amber-950 text-xs font-black shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title={isAr ? 'عرض كافة عروض وتخفيضات الموسم' : 'View Seasonal Offers & Discounts'}
+                >
+                  <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>{isAr ? 'عروض الموسم والتخفيضات (خصم 33%) 🔥' : 'Seasonal Deals (33% OFF) 🔥'}</span>
+                </button>
+              )}
             </div>
 
             {/* Main Grand Headline */}
@@ -178,7 +197,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
 
             {/* Primary Action Buttons */}
-            <div className="pt-2 flex flex-wrap items-center gap-3">
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2.5 max-w-xl">
               {/* Primary CTA: Explore the 4 Studios */}
               <button
                 onClick={() => {
@@ -186,38 +205,49 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
                 type="button"
-                className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-700 via-amber-900 to-slate-900 hover:from-amber-800 hover:to-slate-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2.5 cursor-pointer group"
+                className="w-full sm:w-auto h-11 sm:h-12 px-5 sm:px-6 rounded-xl bg-gradient-to-r from-amber-700 via-amber-800 to-slate-900 hover:from-amber-800 hover:to-slate-950 active:scale-[0.98] text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer group"
               >
-                <Compass className="w-4 h-4 text-amber-300 group-hover:rotate-45 transition-transform" />
-                <span>{isAr ? 'استكشف استوديوهات الإنتاج الـ 4' : 'Explore The 4 Craft Studios'}</span>
+                <Compass className="w-4 h-4 text-amber-300 group-hover:rotate-45 transition-transform shrink-0" />
+                <span className="whitespace-nowrap">{isAr ? 'استكشف الاستوديوهات الـ 4' : 'Explore The 4 Studios'}</span>
                 {isAr ? (
-                  <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                  <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
                 ) : (
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0" />
                 )}
               </button>
 
-              {/* Direct WhatsApp Consultation */}
-              <a
-                href={`${COMPANY_CONTACT.whatsappUrl}?text=${encodeURIComponent(
-                  'مرحباً استوديو نون والقلم، أود الاستفسار وطلب استشارة إنتاجية لمشروعي'
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-xs hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>{isAr ? 'استشارة مهندس إنتاج عبر واتساب' : 'Inquire via WhatsApp'}</span>
-              </a>
+              {/* Secondary Buttons Row: 2-column grid on mobile, inline on desktop */}
+              <div className="grid grid-cols-2 gap-2.5 w-full sm:w-auto sm:flex sm:items-center">
+                {/* Direct WhatsApp Consultation */}
+                <a
+                  href={`${COMPANY_CONTACT.whatsappUrl}?text=${encodeURIComponent(
+                    'مرحباً استوديو نون والقلم، أود الاستفسار وطلب استشارة إنتاجية لمشروعي'
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-11 sm:h-12 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 shrink-0 text-white" />
+                  <span className="whitespace-nowrap">{isAr ? 'استشارة واتساب' : 'WhatsApp'}</span>
+                </a>
 
-              {/* Explore Portfolio Link */}
-              <a
-                href="#portfolio"
-                className="px-4 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm border border-slate-200 transition-colors shadow-2xs hover:border-slate-300 flex items-center gap-1.5"
-              >
-                <Award className="w-4 h-4 text-slate-500" />
-                <span>{isAr ? 'معرض تنفيذات الورشة' : 'Workshop Portfolio'}</span>
-              </a>
+                {/* Explore Portfolio Link */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onNavigateToPortfolio) {
+                      onNavigateToPortfolio();
+                    } else {
+                      const el = document.querySelector('#quick-links') || document.querySelector('footer');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="h-11 sm:h-12 px-3.5 sm:px-4 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 active:scale-[0.98] text-slate-800 font-semibold text-xs sm:text-sm border border-slate-200/90 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Award className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span className="whitespace-nowrap">{isAr ? 'معرض الأعمال' : 'Portfolio'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Trust Metrics Row */}
