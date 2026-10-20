@@ -41,6 +41,9 @@ export const STUDIO_CATEGORIES: Record<SpecialtyId, StudioCategoryItem[]> = {
     { id: 'drawer', labelAr: 'علب درجية وسحب ستان حريري', labelEn: 'Sliding Drawer Setup Boxes', shortLabelAr: 'علب درجية', shortLabelEn: 'Drawer' },
     { id: 'magnetic', labelAr: 'علب إغلاق مغناطيسي خفي', labelEn: 'Concealed Magnetic Boxes', shortLabelAr: 'علب مغناطيسية', shortLabelEn: 'Magnetic' },
     { id: 'mailer', labelAr: 'كراتين شحن بريدي مقواة للمتاجر', labelEn: 'E-Commerce Corrugated Mailers', shortLabelAr: 'كراتين شحن', shortLabelEn: 'Mailers', badgeAr: 'طباعة كاملة', badgeEn: 'Full Print' },
+    { id: 'apparel', labelAr: 'علب أحذية وملابس بغطاء منفصل', labelEn: 'Shoe & Apparel Setup Boxes', shortLabelAr: 'أحذية وملابس', shortLabelEn: 'Apparel & Shoes' },
+    { id: 'gable', labelAr: 'علب كرتون كرافت بمقبض يد', labelEn: 'Kraft Gable Boxes with Handle', shortLabelAr: 'علب بمقبض', shortLabelEn: 'Gable Boxes' },
+    { id: 'pizza', labelAr: 'علب بيتزا ومأكولات كرتونية', labelEn: 'Custom Pizza & Food Boxes', shortLabelAr: 'علب بيتزا', shortLabelEn: 'Pizza Boxes', badgeAr: 'عازل حراري', badgeEn: 'Thermal Barrier' },
   ],
   led: [
     { id: 'all', labelAr: 'كافة أعمال الأكريليك والإضاءة', labelEn: 'All Acrylic & LED Works', shortLabelAr: 'الكل', shortLabelEn: 'All' },

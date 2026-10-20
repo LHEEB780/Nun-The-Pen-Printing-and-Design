@@ -8,6 +8,7 @@ import { OrderManagementTab } from './OrderManagementTab';
 import { UserManagementTab } from './UserManagementTab';
 import { ContentManagementTab } from './ContentManagementTab';
 import { OffersManagementTab } from './OffersManagementTab';
+import { CampaignsManagementTab } from './CampaignsManagementTab';
 import {
   BarChart3,
   Sliders,
@@ -25,11 +26,13 @@ import {
   FileText,
   Unlock,
   Tag,
+  Flame,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export type AdminDashboardTab =
   | 'analytics'
+  | 'campaigns'
   | 'offers'
   | 'form_builder'
   | 'products'
@@ -40,11 +43,13 @@ export type AdminDashboardTab =
 interface AdminDashboardProps {
   onBackToStore: () => void;
   initialTab?: AdminDashboardTab;
+  onOpenLandingPreview?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onBackToStore,
   initialTab = 'analytics',
+  onOpenLandingPreview,
 }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -68,17 +73,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: ['analytics', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
-      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة عروض الموسم والتخفيضات، إدارة المحتوى والمقالات، بناء النماذج، وتسعير المنتجات.',
-      descriptionEn: 'Full system privileges: Analytics, Seasonal Deals, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
+      allowedTabs: ['analytics', 'campaigns', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
+      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة صفحات هبوط تيك توك، إدارة عروض الموسم والتخفيضات، إدارة المحتوى، بناء النماذج، وتسعير المنتجات.',
+      descriptionEn: 'Full system privileges: Analytics, TikTok Landing Pages, Seasonal Deals, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
     },
     sales_manager: {
       titleAr: 'مدير المبيعات (Sales Manager)',
       titleEn: 'Sales Manager',
       badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-      allowedTabs: ['analytics', 'offers', 'orders'],
-      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، إدارة عروض وتخفيضات الموسم، فواتير الطلبات، وبوابات الدفع.',
-      descriptionEn: 'Sales permissions: Revenue charts, promotional campaigns & seasonal offers, and customer orders tracking.',
+      allowedTabs: ['analytics', 'campaigns', 'offers', 'orders'],
+      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، صفحات هبوط تيك توك والإعلانات، إدارة عروض وتخفيضات الموسم، فواتير الطلبات، وبوابات الدفع.',
+      descriptionEn: 'Sales permissions: Revenue charts, TikTok Funnels, promotional campaigns & seasonal offers, and customer orders tracking.',
     },
     inventory_manager: {
       titleAr: 'مدير المخزن والخامات (Inventory Manager)',
@@ -211,6 +216,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               icon: BarChart3,
             },
             {
+              id: 'campaigns' as const,
+              labelAr: 'صفحات هبوط تيك توك والحملات',
+              labelEn: 'TikTok Landing Pages & Campaigns',
+              icon: Flame,
+            },
+            {
               id: 'offers' as const,
               labelAr: 'عروض الموسم والتخفيضات',
               labelEn: 'Seasonal Deals & Offers',
@@ -277,6 +288,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Tab Content Display */}
         <div className="pt-2">
           {activeTab === 'analytics' && <AnalyticsTab />}
+          {activeTab === 'campaigns' && <CampaignsManagementTab onOpenPreview={onOpenLandingPreview} />}
           {activeTab === 'offers' && <OffersManagementTab />}
           {activeTab === 'content' && <ContentManagementTab />}
           {activeTab === 'form_builder' && <FormBuilderTab />}

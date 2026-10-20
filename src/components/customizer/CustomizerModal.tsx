@@ -10,7 +10,7 @@ import {
   COMPANY_CONTACT,
 } from '../../data/mockData';
 import { useCartStore } from '../../store/useCartStore';
-import { useAdminStore } from '../../store/useAdminStore';
+import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   X,
@@ -27,6 +27,7 @@ import {
   ShoppingBag,
   Info,
   ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 
 interface CustomizerModalProps {
@@ -47,9 +48,19 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
   const { addItem, setIsOpen: setCartOpen } = useCartStore();
   const { addDigitalProof } = useAuthStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
-  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
+  const productsList = React.useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
 
-  const [selectedProduct, setSelectedProduct] = useState<ProductItem>(productsList[0]);
+  const resolveTargetProduct = (id?: string): ProductItem => {
+    if (id) {
+      const match = productsList.find((p) => p.id === id);
+      if (match) return match;
+    }
+    return productsList[0];
+  };
+
+  const initialProd = resolveTargetProduct(initialProductId);
+
+  const [selectedProduct, setSelectedProduct] = useState<ProductItem>(initialProd);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
@@ -66,26 +77,24 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Specifications
-  const [selectedDimension, setSelectedDimension] = useState<DimensionOption>(productsList[0].dimensions[0]);
-  const [selectedMaterial, setSelectedMaterial] = useState<MaterialOption>(productsList[0].materials[0]);
-  const [selectedLed, setSelectedLed] = useState<LedOption | undefined>(productsList[0].ledOptions?.[0]);
-  const [quantity, setQuantity] = useState<number>(productsList[0].minQuantity || 1);
+  const [selectedDimension, setSelectedDimension] = useState<DimensionOption>(initialProd.dimensions[0]);
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialOption>(initialProd.materials[0]);
+  const [selectedLed, setSelectedLed] = useState<LedOption | undefined>(initialProd.ledOptions?.[0]);
+  const [quantity, setQuantity] = useState<number>(initialProd.minQuantity || 1);
   const [isAddedSuccess, setIsAddedSuccess] = useState<boolean>(false);
 
-  // Sync initial product
+  // Sync whenever modal opens or initialProductId changes
   useEffect(() => {
-    if (initialProductId) {
-      const found = productsList.find((p) => p.id === initialProductId);
-      if (found) {
-        setSelectedProduct(found);
-        setSelectedDimension(found.dimensions[0]);
-        setSelectedMaterial(found.materials[0]);
-        setSelectedLed(found.ledOptions?.[0]);
-        setQuantity(found.minQuantity || 1);
-        setActiveImageIndex(0);
-      }
+    if (isOpen) {
+      const target = resolveTargetProduct(initialProductId || selectedProduct.id);
+      setSelectedProduct(target);
+      setSelectedDimension(target.dimensions[0]);
+      setSelectedMaterial(target.materials[0]);
+      setSelectedLed(target.ledOptions?.[0]);
+      setQuantity(target.minQuantity || 1);
+      setActiveImageIndex(0);
     }
-  }, [initialProductId, productsList]);
+  }, [isOpen, initialProductId, productsList]);
 
   // Gallery Photos
   const galleryPhotos = React.useMemo(() => {
@@ -108,6 +117,19 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
     setSelectedLed(prod.ledOptions?.[0]);
     setQuantity(prod.minQuantity || 1);
     setActiveImageIndex(0);
+  };
+
+  // Image Navigation Handlers (أزرار تحريك الصور في المودال)
+  const handleNextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (galleryPhotos.length <= 1) return;
+    setActiveImageIndex((prev) => (prev + 1) % galleryPhotos.length);
+  };
+
+  const handlePrevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (galleryPhotos.length <= 1) return;
+    setActiveImageIndex((prev) => (prev - 1 + galleryPhotos.length) % galleryPhotos.length);
   };
 
   // Pricing & Tier calculation
@@ -293,22 +315,55 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
             <select
               value={selectedProduct.id}
               onChange={(e) => handleProductChange(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-bold text-white shadow-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-bold text-white shadow-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500 max-w-[200px] sm:max-w-[280px]"
             >
-              {productsList.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {isAr ? p.titleAr : p.titleEn}
-                </option>
-              ))}
+              <optgroup label={isAr ? '📦 علب كرتونية وتغليف' : '📦 Packaging & Boxes'}>
+                {productsList
+                  .filter((p) => p.category === 'boxes')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {isAr ? p.titleAr : p.titleEn}
+                    </option>
+                  ))}
+              </optgroup>
+              <optgroup label={isAr ? '💡 دروع وألواح إضاءة 3D LED' : '💡 3D LED & Acrylic Lamps'}>
+                {productsList
+                  .filter((p) => p.category === 'led')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {isAr ? p.titleAr : p.titleEn}
+                    </option>
+                  ))}
+              </optgroup>
+              <optgroup label={isAr ? '📇 بطاقات وهوية بصرية' : '📇 Cards & Identity'}>
+                {productsList
+                  .filter((p) => p.category === 'cards')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {isAr ? p.titleAr : p.titleEn}
+                    </option>
+                  ))}
+              </optgroup>
+              <optgroup label={isAr ? '🎉 مناسبات وبورتريه وزفاف' : '🎉 Occasions & Weddings'}>
+                {productsList
+                  .filter((p) => p.category === 'portraits' || p.category === 'weddings')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {isAr ? p.titleAr : p.titleEn}
+                    </option>
+                  ))}
+              </optgroup>
             </select>
 
             <button
               onClick={onClose}
               type="button"
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer border border-slate-700 text-xs font-bold shadow-xs active:scale-95"
               aria-label="Close modal"
+              title={isAr ? 'خروج / عودة للاستوديو' : 'Exit / Close'}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 text-amber-400" />
+              <span>{isAr ? 'خروج / عودة' : 'Exit / Close'}</span>
             </button>
           </div>
         </div>
@@ -335,7 +390,7 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
                   onClick={() => setFullscreenImage(galleryPhotos[activeImageIndex] || selectedProduct.image)}
                 />
 
-                <div className="absolute top-3 start-3 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold">
+                <div className="absolute top-3 start-3 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold z-10">
                   {isAr
                     ? `صورة ${activeImageIndex + 1} من ${galleryPhotos.length}`
                     : `${activeImageIndex + 1} of ${galleryPhotos.length}`}
@@ -344,23 +399,27 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setFullscreenImage(galleryPhotos[activeImageIndex] || selectedProduct.image)}
-                  className="absolute top-3 end-3 p-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white hover:text-amber-300 transition-colors cursor-pointer border border-white/20"
+                  className="absolute top-3 end-3 p-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white hover:text-amber-300 transition-colors cursor-pointer border border-white/20 z-10"
                   title={isAr ? 'عرض ملء الشاشة' : 'Fullscreen'}
                 >
                   <Maximize2 className="w-4 h-4" />
                 </button>
 
-                <div className="absolute bottom-3 end-3 px-3 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-950 text-xs font-black shadow-md border border-slate-200">
+                <div className="absolute bottom-3 end-3 px-3 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-950 text-xs font-black shadow-md border border-slate-200 z-10">
                   {selectedProduct.basePrice.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
                 </div>
               </div>
 
-              {/* Thumbnails */}
+              {/* Thumbnails & Controls BELOW Photo */}
               {galleryPhotos.length > 1 && (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 block px-1">
-                    {isAr ? 'معرض صور المنتج (انقر للتبديل):' : 'Photo Gallery (click to view):'}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1 text-[10px] font-bold text-slate-400">
+                    <span>{isAr ? 'معرض صور المنتج:' : 'Photo Gallery:'}</span>
+                    <span className="text-[10px] text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80">
+                      {isAr ? `${activeImageIndex + 1} / ${galleryPhotos.length}` : `${activeImageIndex + 1} / ${galleryPhotos.length}`}
+                    </span>
+                  </div>
+
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                     {galleryPhotos.map((photo, idx) => (
                       <button
@@ -369,13 +428,51 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
                         onClick={() => setActiveImageIndex(idx)}
                         className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
                           activeImageIndex === idx
-                            ? 'border-amber-600 scale-105 shadow-sm ring-2 ring-amber-500/20'
+                            ? 'border-amber-700 scale-102 shadow-sm ring-2 ring-amber-500/20'
                             : 'border-slate-200 hover:border-slate-300 opacity-70 hover:opacity-100'
                         }`}
                       >
                         <img src={photo} alt="Thumb" className="w-full h-full object-cover" />
                       </button>
                     ))}
+                  </div>
+
+                  {/* Navigation Controls Bar BELOW Photo Strip (أزرار بدون نص بسهم وتدرج ظلي) */}
+                  <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={handlePrevImage}
+                      className="inline-flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-gradient-to-br from-amber-900 via-stone-900 to-amber-950 hover:from-amber-800 hover:via-stone-850 hover:to-amber-900 active:scale-95 text-amber-200 border border-amber-700/50 transition-all cursor-pointer shadow-md shadow-amber-950/30 group"
+                      title={isAr ? 'الصورة السابقة' : 'Previous Photo'}
+                      aria-label={isAr ? 'الصورة السابقة' : 'Previous Photo'}
+                    >
+                      {isAr ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                    </button>
+
+                    {/* Dots */}
+                    <div className="flex items-center gap-1">
+                      {galleryPhotos.map((_, dotIdx) => (
+                        <button
+                          key={dotIdx}
+                          type="button"
+                          onClick={() => setActiveImageIndex(dotIdx)}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                            activeImageIndex === dotIdx ? 'w-4 bg-amber-800 shadow-xs' : 'w-1.5 bg-amber-200 hover:bg-amber-300'
+                          }`}
+                          title={isAr ? `صورة ${dotIdx + 1}` : `Photo ${dotIdx + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleNextImage}
+                      className="inline-flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-gradient-to-br from-amber-900 via-stone-900 to-amber-950 hover:from-amber-800 hover:via-stone-850 hover:to-amber-900 active:scale-95 text-amber-200 border border-amber-700/50 transition-all cursor-pointer shadow-md shadow-amber-950/30 group"
+                      title={isAr ? 'الصورة التالية' : 'Next Photo'}
+                      aria-label={isAr ? 'الصورة التالية' : 'Next Photo'}
+                    >
+                      {isAr ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
                 </div>
               )}
@@ -759,24 +856,77 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
 
       </div>
 
-      {/* Fullscreen Photo Viewer Modal */}
+      {/* Fullscreen Photo Viewer Modal with Controls BELOW Photo & Small Return Button */}
       {fullscreenImage && (
         <div
-          className="fixed inset-0 z-60 bg-black/95 flex items-center justify-center p-4 cursor-zoom-out"
+          className="fixed inset-0 z-60 bg-black/95 flex flex-col items-center justify-center p-3 sm:p-5 cursor-zoom-out select-none animate-fade"
           onClick={() => setFullscreenImage(null)}
         >
-          <button
-            type="button"
-            onClick={() => setFullscreenImage(null)}
-            className="absolute top-6 end-6 p-2 rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer"
+          <div
+            className="relative max-w-4xl max-h-[85vh] flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="w-6 h-6" />
-          </button>
-          <img
-            src={fullscreenImage}
-            alt="Fullscreen preview"
-            className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
-          />
+            <img
+              src={galleryPhotos[activeImageIndex] || selectedProduct.image}
+              alt="Fullscreen preview"
+              className="max-w-full max-h-[72vh] sm:max-h-[76vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+            />
+
+            {/* Controls Bar BELOW Image (أزرار أسفل الصورة بدون نص بسهم وتدرج ظلي، وزر رجوع يبقى على حاله) */}
+            <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2 bg-slate-950/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-amber-900/40 shadow-xl">
+              {galleryPhotos.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePrevImage}
+                  className="inline-flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-gradient-to-br from-amber-900 via-stone-900 to-amber-950 hover:from-amber-800 hover:via-stone-850 hover:to-amber-900 active:scale-95 text-amber-200 border border-amber-700/50 transition-all cursor-pointer shadow-md shadow-black/40"
+                  title={isAr ? 'الصورة السابقة' : 'Previous Image'}
+                  aria-label={isAr ? 'الصورة السابقة' : 'Previous Image'}
+                >
+                  {isAr ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                </button>
+              )}
+
+              <span className="text-[11px] font-bold text-amber-300 bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-700/40 font-mono">
+                {isAr
+                  ? `صورة ${activeImageIndex + 1} من ${galleryPhotos.length}`
+                  : `${activeImageIndex + 1} of ${galleryPhotos.length}`}
+              </span>
+
+              {galleryPhotos.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleNextImage}
+                  className="inline-flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-gradient-to-br from-amber-900 via-stone-900 to-amber-950 hover:from-amber-800 hover:via-stone-850 hover:to-amber-900 active:scale-95 text-amber-200 border border-amber-700/50 transition-all cursor-pointer shadow-md shadow-black/40"
+                  title={isAr ? 'الصورة التالية' : 'Next Image'}
+                  aria-label={isAr ? 'الصورة التالية' : 'Next Image'}
+                >
+                  {isAr ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+              )}
+
+              <div className="w-px h-3.5 bg-amber-800/40 mx-0.5" />
+
+              {/* Small Return Button */}
+              <button
+                type="button"
+                onClick={() => setFullscreenImage(null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-900/60 hover:bg-amber-950 active:scale-95 text-amber-100 hover:text-white border border-amber-700/50 text-[11px] font-bold transition-all cursor-pointer shadow-xs"
+                title={isAr ? 'رجوع وإغلاق' : 'Close / Return'}
+              >
+                <X className="w-3 h-3 text-amber-300" />
+                <span>{isAr ? 'رجوع' : 'Return'}</span>
+              </button>
+            </div>
+
+            {/* Corner close fallback */}
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute -top-3 -end-3 p-1.5 rounded-full bg-slate-900/80 hover:bg-amber-950 text-amber-200 hover:text-white transition-colors cursor-pointer border border-amber-700/40"
+              title={isAr ? 'إغلاق' : 'Close'}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
 

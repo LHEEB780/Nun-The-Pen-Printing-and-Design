@@ -103,6 +103,8 @@ export interface OrderRecord {
   estimatedDelivery?: string;
   stageLogs?: ManufacturingStageLog[];
   workshopNotes?: string;
+  source?: string;
+  campaignSlug?: string;
 }
 
 interface CartStore {

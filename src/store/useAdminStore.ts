@@ -39,6 +39,41 @@ export interface AdminOrderRecord extends OrderRecord {
   urgentDispatch?: boolean;
 }
 
+export type CampaignPlatform = 'tiktok' | 'facebook' | 'instagram' | 'snapchat' | 'google' | 'direct';
+
+export interface PlatformStatItem {
+  views: number;
+  orders: number;
+  revenue: number;
+}
+
+export interface LandingPageCampaign {
+  id: string;
+  isActive: boolean;
+  slug: string;
+  productId: string;
+  headlineAr: string;
+  headlineEn: string;
+  subheadlineAr: string;
+  subheadlineEn: string;
+  badgeTextAr: string;
+  badgeTextEn: string;
+  promoPriceIQD: number;
+  originalPriceIQD: number;
+  urgencyStockLeft: number;
+  countdownHours: number;
+  bonusOfferTitleAr: string;
+  bonusOfferTitleEn: string;
+  bonusOfferPriceIQD: number;
+  bonusOfferEnabled: boolean;
+  bulletPointsAr: string[];
+  bulletPointsEn: string[];
+  viewsCount: number;
+  ordersCount: number;
+  totalRevenueIQD: number;
+  platformStats?: Record<string, PlatformStatItem>;
+}
+
 interface AdminStore {
   currentRole: AdminRole;
   setCurrentRole: (role: AdminRole) => void;
@@ -67,6 +102,13 @@ interface AdminStore {
   updateStaffRole: (staffId: string, role: AdminRole) => void;
   addStaffMember: (staff: Omit<StaffMember, 'id' | 'lastActive'>) => void;
   toggleStaffStatus: (staffId: string) => void;
+
+  // Dynamic Campaign Landing Page State
+  campaign: LandingPageCampaign;
+  updateCampaign: (updated: Partial<LandingPageCampaign>) => void;
+  recordCampaignVisit: (source?: string) => void;
+  recordCampaignOrder: (revenue: number, source?: string) => void;
+  resetCampaignStats: () => void;
 }
 
 const INITIAL_STAFF: StaffMember[] = [
@@ -347,6 +389,50 @@ const INITIAL_ADMIN_ORDERS: AdminOrderRecord[] = [
   },
 ];
 
+const INITIAL_CAMPAIGN: LandingPageCampaign = {
+  id: 'camp-tiktok-1',
+  isActive: true,
+  slug: 'tiktok-exclusive',
+  productId: 'prod-3d-led-acrylic-shield',
+  headlineAr: 'عرض حصري لمتابعي تيك توك: درع 3D LED بإضاءة سحرية وتصميم مخصص باسمك 🔥',
+  headlineEn: 'TikTok Exclusive: Custom 3D LED Acrylic Plaque with Your Brand & Name',
+  subheadlineAr: 'احصل على تحفة هندسية مخصصة تليق بمكتبك أو هديتك مع بروفة رقمية مجانية وتوصيل سريع لكافة المحافظات!',
+  subheadlineEn: 'Get a custom artistic piece for your desk or gift with free digital proofing and fast delivery across Iraq!',
+  badgeTextAr: 'خصم خاص 35% لفترة محدودة ⚡',
+  badgeTextEn: 'Special 35% Off Flash Deal ⚡',
+  promoPriceIQD: 38000,
+  originalPriceIQD: 58000,
+  urgencyStockLeft: 7,
+  countdownHours: 6,
+  bonusOfferTitleAr: 'إضافة قاعدة خشبية طبيعية فاخرة أو قطعة ثانية بخصم 45%',
+  bonusOfferTitleEn: 'Add luxury natural wooden base at 45% OFF',
+  bonusOfferPriceIQD: 14000,
+  bonusOfferEnabled: true,
+  bulletPointsAr: [
+    'أكريليك كاست نقي 100% شفاف معالج ضد الخدش والاصفرار',
+    'إضاءة LED تدوم أكثر من 50,000 ساعة مع قاعدة أنيقة وزر تحكم',
+    'بروفة هندسية رقمية مجانية يجهزها المصمم وتعتمدها بنفسك قبل التنفيذ',
+    'الدفع نقدياً عند الاستلام مع إمكانية المعاينة الكاملة قبل الدفع',
+    'شحن آمن ومغلف بعناية فائقة لجميع محافظات العراق خلال 24 - 48 ساعة',
+  ],
+  bulletPointsEn: [
+    '100% Optical Grade Pure Cast Acrylic (Scratch Resistant)',
+    '50,000+ Hours LED Life with Elegant Base & Controller',
+    'Free Digital Blueprint Proof Approved by You Before Crafting',
+    'Cash on Delivery with Right to Inspect Package Before Paying',
+    'Fast and Safe Shipping to All Iraqi Governorates within 24-48 Hours',
+  ],
+  viewsCount: 168,
+  ordersCount: 23,
+  totalRevenueIQD: 874000,
+  platformStats: {
+    tiktok: { views: 76, orders: 11, revenue: 418000 },
+    facebook: { views: 48, orders: 6, revenue: 228000 },
+    instagram: { views: 32, orders: 4, revenue: 152000 },
+    snapchat: { views: 12, orders: 2, revenue: 76000 },
+  },
+};
+
 export const useAdminStore = create<AdminStore>()(
   persist(
     (set) => ({
@@ -438,15 +524,101 @@ export const useAdminStore = create<AdminStore>()(
           ),
         }));
       },
+
+      // Dynamic Multi-Platform Campaign Landing Page State & Actions
+      campaign: INITIAL_CAMPAIGN,
+      updateCampaign: (updated) => {
+        set((state) => ({
+          campaign: { ...state.campaign, ...updated },
+        }));
+      },
+      recordCampaignVisit: (source) => {
+        const normalized = (source || 'direct').toLowerCase();
+        set((state) => {
+          const currentStats = state.campaign.platformStats || {};
+          const prev = currentStats[normalized] || { views: 0, orders: 0, revenue: 0 };
+          return {
+            campaign: {
+              ...state.campaign,
+              viewsCount: (state.campaign.viewsCount || 0) + 1,
+              platformStats: {
+                ...currentStats,
+                [normalized]: {
+                  ...prev,
+                  views: prev.views + 1,
+                },
+              },
+            },
+          };
+        });
+      },
+      recordCampaignOrder: (revenue, source) => {
+        const normalized = (source || 'direct').toLowerCase();
+        set((state) => {
+          const currentStats = state.campaign.platformStats || {};
+          const prev = currentStats[normalized] || { views: 0, orders: 0, revenue: 0 };
+          return {
+            campaign: {
+              ...state.campaign,
+              ordersCount: (state.campaign.ordersCount || 0) + 1,
+              totalRevenueIQD: (state.campaign.totalRevenueIQD || 0) + revenue,
+              urgencyStockLeft: Math.max(1, (state.campaign.urgencyStockLeft || 7) - 1),
+              platformStats: {
+                ...currentStats,
+                [normalized]: {
+                  ...prev,
+                  orders: prev.orders + 1,
+                  revenue: prev.revenue + revenue,
+                },
+              },
+            },
+          };
+        });
+      },
+      resetCampaignStats: () => {
+        set((state) => ({
+          campaign: {
+            ...state.campaign,
+            viewsCount: 0,
+            ordersCount: 0,
+            totalRevenueIQD: 0,
+            platformStats: {
+              tiktok: { views: 0, orders: 0, revenue: 0 },
+              facebook: { views: 0, orders: 0, revenue: 0 },
+              instagram: { views: 0, orders: 0, revenue: 0 },
+              snapchat: { views: 0, orders: 0, revenue: 0 },
+            },
+          },
+        }));
+      },
     }),
     {
-      name: 'noon_walqalam_admin_store_v2',
+      name: 'noon_walqalam_admin_store_v4',
       partialize: (state) => ({
         adminProducts: state.adminProducts,
         customFormFields: state.customFormFields,
         adminOrders: state.adminOrders,
         staffMembers: state.staffMembers,
+        campaign: state.campaign,
       }),
     }
   )
 );
+
+/**
+ * Robust helper to always return the full, up-to-date catalog of products,
+ * seamlessly merging code-defined products (like new carton boxes & pizza boxes)
+ * with any admin customizations.
+ */
+export function getUnifiedProducts(adminProducts?: ProductItem[]): ProductItem[] {
+  if (!adminProducts || adminProducts.length === 0) return PRODUCTS;
+  const adminMap = new Map(adminProducts.map((p) => [p.id, p]));
+  const merged = PRODUCTS.map((defProd) => {
+    const adminProd = adminMap.get(defProd.id);
+    return adminProd ? { ...defProd, ...adminProd } : defProd;
+  });
+  const defaultIds = new Set(PRODUCTS.map((p) => p.id));
+  const customOnly = adminProducts.filter((p) => !defaultIds.has(p.id));
+  return [...merged, ...customOnly];
+}
+

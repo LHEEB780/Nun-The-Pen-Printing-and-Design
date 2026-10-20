@@ -25,7 +25,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { SpecialtyId, SPECIALTY_GATEWAYS } from '../home/SpecialtyGatewaysSection';
-import { useAdminStore } from '../../store/useAdminStore';
+import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
 import { useCartStore } from '../../store/useCartStore';
 import { toast } from 'sonner';
@@ -75,13 +75,9 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  // Products from Admin Store or MockData with fallback merge
+  // Products from Admin Store or MockData with unified catalog
   const adminProducts = useAdminStore((state) => state.adminProducts);
-  const productsList = useMemo(() => {
-    const existingIds = new Set((adminProducts || []).map((p) => p.id));
-    const missingDefaults = PRODUCTS.filter((p) => !existingIds.has(p.id));
-    return [...(adminProducts || []), ...missingDefaults];
-  }, [adminProducts]);
+  const productsList = useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
 
   const { addItem, setIsOpen: setCartOpen } = useCartStore();
 
@@ -147,6 +143,9 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
         if (cat.id === 'drawer') return text.includes('درج') || text.includes('drawer');
         if (cat.id === 'magnetic') return text.includes('مغناطيس') || text.includes('magnetic');
         if (cat.id === 'mailer') return text.includes('شحن') || text.includes('mailer') || text.includes('مضلع');
+        if (cat.id === 'apparel') return text.includes('أحذية') || text.includes('ملابس') || text.includes('shoe') || text.includes('apparel');
+        if (cat.id === 'gable') return text.includes('مقبض') || text.includes('gable') || text.includes('حلويات');
+        if (cat.id === 'pizza') return text.includes('بيتزا') || text.includes('pizza') || text.includes('مأكولات');
         if (cat.id === 'trophy') return text.includes('درع') || text.includes('تكريم') || text.includes('trophy') || text.includes('جائز');
         if (cat.id === 'desk') return text.includes('مكتب') || text.includes('desk') || text.includes('استقبال');
         if (cat.id === 'optical3d') return text.includes('3d') || text.includes('مجسم') || text.includes('مضيء');
@@ -180,6 +179,9 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
           if (activeCategory === 'drawer' && !fullText.includes('درج') && !fullText.includes('drawer')) return false;
           if (activeCategory === 'magnetic' && !fullText.includes('مغناطيس') && !fullText.includes('magnetic')) return false;
           if (activeCategory === 'mailer' && !fullText.includes('شحن') && !fullText.includes('mailer') && !fullText.includes('مضلع')) return false;
+          if (activeCategory === 'apparel' && !fullText.includes('أحذية') && !fullText.includes('ملابس') && !fullText.includes('shoe') && !fullText.includes('apparel')) return false;
+          if (activeCategory === 'gable' && !fullText.includes('مقبض') && !fullText.includes('gable') && !fullText.includes('حلويات')) return false;
+          if (activeCategory === 'pizza' && !fullText.includes('بيتزا') && !fullText.includes('pizza')) return false;
           if (activeCategory === 'trophy' && !fullText.includes('درع') && !fullText.includes('تكريم') && !fullText.includes('trophy')) return false;
           if (activeCategory === 'desk' && !fullText.includes('مكتب') && !fullText.includes('desk') && !fullText.includes('استقبال')) return false;
           if (activeCategory === 'optical3d' && !fullText.includes('3d') && !fullText.includes('مضيء') && !fullText.includes('مجسم')) return false;
@@ -457,7 +459,7 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
                     {isAr ? 'تصوير حي من ورشتنا 📸' : 'Workshop Live Capture'}
                   </span>
                   <button
-                    onClick={() => onOpenCustomizerModal()}
+                    onClick={() => onOpenCustomizerModal(baseStudioProducts[0]?.id || 'prod-pizza-box')}
                     type="button"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black transition-colors cursor-pointer shadow-sm"
                   >
@@ -832,7 +834,7 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
                             }}
                             className="flex-1 py-1 px-1.5 sm:py-1.5 sm:px-2 rounded-lg bg-amber-950 hover:bg-amber-900 text-amber-100 text-[10px] sm:text-[11px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
                           >
-                            <span>{isAr ? 'تخصيص' : 'Customize'}</span>
+                            <span>{isAr ? 'عرض وتخصيص' : 'View & Customize'}</span>
                           </button>
 
                           <button
@@ -911,7 +913,7 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
                           className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>{isAr ? 'التفاصيل' : 'Details'}</span>
+                          <span>{isAr ? 'عرض التفاصيل' : 'View Details'}</span>
                         </button>
                         <button
                           type="button"
@@ -950,7 +952,7 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
                     <span>{isAr ? 'إعادة ضبط كافة الفلاتر' : 'Reset All Filters'}</span>
                   </button>
                   <button
-                    onClick={() => onOpenCustomizerModal()}
+                    onClick={() => onOpenCustomizerModal(baseStudioProducts[0]?.id || 'prod-pizza-box')}
                     type="button"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
                   >

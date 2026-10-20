@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
-import { useAdminStore } from '../../store/useAdminStore';
+import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { SlidersHorizontal, Sparkles, Layers, Ruler, Palette, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
 import { useContentStore } from '../../store/useContentStore';
 
@@ -20,7 +20,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
   const isAr = i18n.language === 'ar';
   const { setSelectedArticleId } = useContentStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
-  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
+  const productsList = getUnifiedProducts(adminProducts);
 
   return (
     <section id="shop" className="py-20 bg-white relative">

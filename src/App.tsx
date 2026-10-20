@@ -24,6 +24,7 @@ import { OrderConfirmationPage } from './components/checkout/OrderConfirmationPa
 import { CustomerDashboard } from './components/dashboard/CustomerDashboard';
 import { AdminDashboard, AdminDashboardTab } from './components/admin/AdminDashboard';
 import { SeasonalOffersPage } from './components/offers/SeasonalOffersPage';
+import { DynamicLandingPage } from './components/landing/DynamicLandingPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { CustomizerModal } from './components/customizer/CustomizerModal';
 import { CartDrawer } from './components/cart/CartDrawer';
@@ -35,10 +36,11 @@ import { OrderRecord, useCartStore } from './store/useCartStore';
 import { useAuthStore } from './store/useAuthStore';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'landing'>('home');
   const [adminInitialTab, setAdminInitialTab] = useState<AdminDashboardTab>('analytics');
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<SpecialtyId>('boxes');
-  const [selectedProductId, setSelectedProductId] = useState<string>('prod-acrylic-led-sign');
+  const [selectedProductId, setSelectedProductId] = useState<string>('prod-pizza-box');
+  const [previousView, setPreviousView] = useState<'home' | 'shop' | 'specialty' | 'offers' | 'admin'>('specialty');
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [customizerInitialId, setCustomizerInitialId] = useState<string | undefined>(undefined);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -47,10 +49,42 @@ export default function App() {
   const { lastOrder } = useCartStore();
   const { addOrderToHistory, isAuthenticated } = useAuthStore();
 
+  // Handle deep-linking from shared product URLs or TikTok campaign landing page on mount
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      // Check for TikTok / social campaign funnel parameter
+      if (params.get('landing') === 'true' || params.has('campaign') || params.has('lp') || params.has('tiktok')) {
+        const campaignProd = params.get('prod') || params.get('productId');
+        if (campaignProd) {
+          setSelectedProductId(campaignProd);
+        }
+        setCurrentView('landing');
+        return;
+      }
+
+      const urlProduct = params.get('product') || params.get('id');
+      if (urlProduct) {
+        setSelectedProductId(urlProduct);
+        setCurrentView('product');
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Navigation Handlers
   const handleSelectProduct = (productId: string) => {
+    setPreviousView(currentView === 'specialty' ? 'specialty' : currentView === 'shop' ? 'shop' : 'specialty');
     setSelectedProductId(productId);
     setCurrentView('product');
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('product', productId);
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // ignore
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -61,7 +95,24 @@ export default function App() {
   };
 
   const handleOpenCustomizer = (productId?: string) => {
-    setCustomizerInitialId(productId);
+    let targetId = productId;
+    if (!targetId) {
+      if (currentView === 'specialty') {
+        targetId =
+          selectedSpecialtyId === 'boxes'
+            ? 'prod-pizza-box'
+            : selectedSpecialtyId === 'cards'
+            ? 'prod-crystal-acrylic-card'
+            : selectedSpecialtyId === 'occasions'
+            ? 'prod-wedding-guestbook'
+            : 'prod-airplane-led';
+      } else if (currentView === 'product') {
+        targetId = selectedProductId;
+      } else {
+        targetId = 'prod-pizza-box';
+      }
+    }
+    setCustomizerInitialId(targetId);
     setCustomizerOpen(true);
   };
 
@@ -91,17 +142,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Top Navigation */}
-      <Navbar
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onOpenCustomizer={handleOpenCustomizer}
-        onOpenAuthModal={() => setAuthModalOpen(true)}
-        activeSpecialtyId={selectedSpecialtyId}
-      />
+      {/* Top Navigation - Hidden on landing page for pure distraction-free conversion */}
+      {currentView !== 'landing' && (
+        <Navbar
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onOpenCustomizer={handleOpenCustomizer}
+          onOpenAuthModal={() => setAuthModalOpen(true)}
+          activeSpecialtyId={selectedSpecialtyId}
+        />
+      )}
 
       {/* Main Content Router */}
       <main className="flex-1">
+        {currentView === 'landing' && (
+          <DynamicLandingPage
+            onBackToHome={() => handleNavigate(previousView === 'admin' ? 'admin' : 'home')}
+            overrideProductId={selectedProductId}
+            isPreview={previousView === 'admin'}
+          />
+        )}
+
         {currentView === 'home' && (
           <>
             <HeroSection
@@ -147,8 +208,9 @@ export default function App() {
 
         {currentView === 'product' && (
           <ProductDetailPage
+            key={selectedProductId}
             productId={selectedProductId}
-            onBackToShop={() => handleNavigate('shop')}
+            onBackToShop={() => handleNavigate(previousView === 'admin' ? 'admin' : previousView || 'specialty')}
             onOpenCustomizerModal={handleOpenCustomizer}
           />
         )}
@@ -192,6 +254,11 @@ export default function App() {
           <AdminDashboard
             onBackToStore={() => handleNavigate('shop')}
             initialTab={adminInitialTab}
+            onOpenLandingPreview={() => {
+              setPreviousView('admin');
+              setCurrentView('landing');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
         )}
 
@@ -204,11 +271,13 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <Footer
-        onNavigate={handleNavigate}
-        onOpenCustomizer={handleOpenCustomizer}
-      />
+      {/* Footer - Hidden on landing page */}
+      {currentView !== 'landing' && (
+        <Footer
+          onNavigate={handleNavigate}
+          onOpenCustomizer={handleOpenCustomizer}
+        />
+      )}
 
       {/* Product Showcase & Client Data Upload Modal */}
       <CustomizerModal
@@ -240,20 +309,22 @@ export default function App() {
         onLoginSuccess={() => handleNavigate('dashboard')}
       />
 
-      {/* Floating WhatsApp Quick Action Button */}
-      <a
-        href={COMPANY_CONTACT.whatsappUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 end-6 z-30 p-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center group"
-        aria-label="Direct WhatsApp Consultation"
-        title="تواصل مباشر عبر واتساب | Direct WhatsApp"
-      >
-        <MessageCircle className="w-6 h-6 fill-white/20" />
-        <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs group-hover:ms-2 text-xs font-bold transition-all duration-300 ease-in-out">
-          +964 780 000 0000
-        </span>
-      </a>
+      {/* Floating WhatsApp Quick Action Button (Hidden on landing page) */}
+      {currentView !== 'landing' && (
+        <a
+          href={COMPANY_CONTACT.whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 end-6 z-30 p-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center group"
+          aria-label="Direct WhatsApp Consultation"
+          title="تواصل مباشر عبر واتساب | Direct WhatsApp"
+        >
+          <MessageCircle className="w-6 h-6 fill-white/20" />
+          <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs group-hover:ms-2 text-xs font-bold transition-all duration-300 ease-in-out">
+            +964 780 000 0000
+          </span>
+        </a>
+      )}
 
       {/* Shadcn UI Sonner Toast Notification Container */}
       <Toaster position="top-center" richColors closeButton />

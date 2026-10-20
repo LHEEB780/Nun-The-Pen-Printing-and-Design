@@ -37,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   onNavigate,
   onOpenAuthModal,
+  activeSpecialtyId,
 }) => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -544,7 +545,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* 5. Request Custom Design CTA (Largest Button: 34px height, sleek luxury CTA) */}
             <button
-              onClick={() => onOpenCustomizer()}
+              onClick={() => {
+                const defaultProdId =
+                  activeSpecialtyId === 'boxes'
+                    ? 'prod-pizza-box'
+                    : activeSpecialtyId === 'cards'
+                    ? 'prod-crystal-acrylic-card'
+                    : activeSpecialtyId === 'occasions'
+                    ? 'prod-wedding-guestbook'
+                    : activeSpecialtyId === 'led'
+                    ? 'prod-airplane-led'
+                    : 'prod-pizza-box';
+                onOpenCustomizer(defaultProdId);
+              }}
               type="button"
               className="hidden sm:inline-flex items-center gap-1.5 h-[34px] px-3 sm:px-3.5 rounded-lg text-[11px] sm:text-xs font-black bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 hover:from-amber-800 hover:to-amber-900 text-white shadow-xs hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shrink-0"
               title={isAr ? 'طلب وتجهيز تصميم مخصص' : 'Request Custom Design'}

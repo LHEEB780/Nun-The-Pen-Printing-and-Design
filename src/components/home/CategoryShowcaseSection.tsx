@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useContentStore } from '../../store/useContentStore';
 import { PRODUCTS } from '../../data/mockData';
-import { useAdminStore } from '../../store/useAdminStore';
+import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 
 interface CategoryShowcaseSectionProps {
   onSelectCategory?: (categoryId: string) => void;
@@ -40,7 +40,7 @@ export const CategoryShowcaseSection: React.FC<CategoryShowcaseSectionProps> = (
   const isAr = i18n.language === 'ar';
   const { setSelectedArticleId } = useContentStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
-  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
+  const productsList = getUnifiedProducts(adminProducts);
 
   const [activeTabId, setActiveTabId] = useState<string>('led');
   const [activeSubImageIdx, setActiveSubImageIdx] = useState<number>(0);

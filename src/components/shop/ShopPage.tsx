@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
-import { useAdminStore } from '../../store/useAdminStore';
+import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import {
   Search,
   Sparkles,
@@ -28,7 +28,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const adminProducts = useAdminStore((state) => state.adminProducts);
-  const productsList = adminProducts && adminProducts.length > 0 ? adminProducts : PRODUCTS;
+  const productsList = useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
