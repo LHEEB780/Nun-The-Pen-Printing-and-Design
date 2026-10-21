@@ -86,6 +86,7 @@ interface AdminStore {
 
   // Products CRUD State
   adminProducts: ProductItem[];
+  deletedProductIds: string[];
   addProduct: (prod: ProductItem) => void;
   updateProduct: (id: string, updated: Partial<ProductItem>) => void;
   deleteProduct: (id: string) => void;
@@ -93,6 +94,7 @@ interface AdminStore {
 
   // Orders Management State
   adminOrders: AdminOrderRecord[];
+  addOrder: (order: OrderRecord) => void;
   updateOrderStatus: (orderId: string, status: OrderWorkflowStatus) => void;
   updatePaymentStatus: (orderId: string, status: 'paid' | 'pending_cod') => void;
   updateDesignerNotes: (orderId: string, notes: string) => void;
@@ -461,6 +463,7 @@ export const useAdminStore = create<AdminStore>()(
       },
 
       adminProducts: PRODUCTS,
+      deletedProductIds: [],
       addProduct: (prod) => {
         set((state) => ({
           adminProducts: [prod, ...state.adminProducts],
@@ -474,13 +477,26 @@ export const useAdminStore = create<AdminStore>()(
       deleteProduct: (id) => {
         set((state) => ({
           adminProducts: state.adminProducts.filter((p) => p.id !== id),
+          // Tombstone the ID so getUnifiedProducts() keeps it hidden even for code-defined defaults
+          deletedProductIds: state.deletedProductIds.includes(id)
+            ? state.deletedProductIds
+            : [...state.deletedProductIds, id],
         }));
       },
       resetProductsToDefaults: () => {
-        set({ adminProducts: PRODUCTS });
+        set({ adminProducts: PRODUCTS, deletedProductIds: [] });
       },
 
       adminOrders: INITIAL_ADMIN_ORDERS,
+      addOrder: (order) => {
+        const adminOrder: AdminOrderRecord = {
+          ...order,
+          workflowStatus: 'pending',
+        };
+        set((state) => ({
+          adminOrders: [adminOrder, ...state.adminOrders],
+        }));
+      },
       updateOrderStatus: (orderId, status) => {
         set((state) => ({
           adminOrders: state.adminOrders.map((o) => (o.orderId === orderId ? { ...o, workflowStatus: status } : o)),
@@ -562,7 +578,7 @@ export const useAdminStore = create<AdminStore>()(
               ...state.campaign,
               ordersCount: (state.campaign.ordersCount || 0) + 1,
               totalRevenueIQD: (state.campaign.totalRevenueIQD || 0) + revenue,
-              urgencyStockLeft: Math.max(1, (state.campaign.urgencyStockLeft || 7) - 1),
+              urgencyStockLeft: Math.max(0, (state.campaign.urgencyStockLeft || 7) - 1),
               platformStats: {
                 ...currentStats,
                 [normalized]: {
@@ -596,6 +612,7 @@ export const useAdminStore = create<AdminStore>()(
       name: 'noon_walqalam_admin_store_v4',
       partialize: (state) => ({
         adminProducts: state.adminProducts,
+        deletedProductIds: state.deletedProductIds,
         customFormFields: state.customFormFields,
         adminOrders: state.adminOrders,
         staffMembers: state.staffMembers,
@@ -608,12 +625,14 @@ export const useAdminStore = create<AdminStore>()(
 /**
  * Robust helper to always return the full, up-to-date catalog of products,
  * seamlessly merging code-defined products (like new carton boxes & pizza boxes)
- * with any admin customizations.
+ * with any admin customizations — while keeping admin-deleted products hidden.
  */
 export function getUnifiedProducts(adminProducts?: ProductItem[]): ProductItem[] {
-  if (!adminProducts || adminProducts.length === 0) return PRODUCTS;
+  const deletedIds = new Set(useAdminStore.getState().deletedProductIds || []);
+  if (!adminProducts || adminProducts.length === 0)
+    return PRODUCTS.filter((p) => !deletedIds.has(p.id));
   const adminMap = new Map(adminProducts.map((p) => [p.id, p]));
-  const merged = PRODUCTS.map((defProd) => {
+  const merged = PRODUCTS.filter((p) => !deletedIds.has(p.id)).map((defProd) => {
     const adminProd = adminMap.get(defProd.id);
     return adminProd ? { ...defProd, ...adminProd } : defProd;
   });

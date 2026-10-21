@@ -77,7 +77,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
     } else if (article.actionLink === 'contact' || article.sectionKey === 'contact') {
       onNavigateToContact?.();
     } else if (article.actionLink === 'whatsapp') {
-      window.open('https://wa.me/9647801234567', '_blank');
+      window.open('https://wa.me/9647800000000', '_blank');
     } else {
       onOpenCustomizer?.();
     }
@@ -476,7 +476,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                       +964 780 123 4567
                     </span>
                     <button
-                      onClick={() => handleCopy('+9647801234567', isAr ? 'رقم واتساب' : 'WhatsApp Number')}
+                      onClick={() => handleCopy('+964 780 000 0000', isAr ? 'رقم واتساب' : 'WhatsApp Number')}
                       className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
                       title={isAr ? 'نسخ الرقم' : 'Copy'}
                     >
@@ -486,7 +486,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                 </div>
 
                 <a
-                  href="https://wa.me/9647801234567"
+                  href="https://wa.me/9647800000000"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3.5 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -525,20 +525,20 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                     <div className="p-3 bg-white rounded-2xl border border-sky-200 flex items-center justify-between">
                       <div>
                         <span className="text-[11px] text-slate-500 block">{isAr ? 'خط المبيعات والإدارة:' : 'Sales Desk:'}</span>
-                        <a href="tel:+9647801234567" className="font-mono font-bold text-slate-900 text-sm dir-ltr hover:text-sky-700">
+                        <a href="tel:+964 780 000 0000" className="font-mono font-bold text-slate-900 text-sm dir-ltr hover:text-sky-700">
                           +964 780 123 4567
                         </a>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleCopy('+9647801234567', isAr ? 'رقم الهاتف' : 'Phone')}
+                          onClick={() => handleCopy('+964 780 000 0000', isAr ? 'رقم الهاتف' : 'Phone')}
                           className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 transition-colors"
                           title="Copy"
                         >
                           <Copy className="w-4 h-4" />
                         </button>
                         <a
-                          href="tel:+9647801234567"
+                          href="tel:+964 780 000 0000"
                           className="px-3 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors"
                         >
                           {isAr ? 'اتصال' : 'Call'}
@@ -706,7 +706,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
 
             {article.sectionKey === 'contact' ? (
               <a
-                href="https://wa.me/9647801234567"
+                href="https://wa.me/9647800000000"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"

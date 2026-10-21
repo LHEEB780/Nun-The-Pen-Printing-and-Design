@@ -3,28 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import './i18n/index.ts';
 import { Navbar } from './components/layout/Navbar';
 import { HeroSection } from './components/home/HeroSection';
 import { ServicesSection } from './components/home/ServicesSection';
-import { PortfolioPage } from './components/portfolio/PortfolioPage';
 import { ShopSection } from './components/home/ShopSection';
 import { CategoryShowcaseSection } from './components/home/CategoryShowcaseSection';
 import { SpecialtyGatewaysSection, SpecialtyId } from './components/home/SpecialtyGatewaysSection';
-import { SpecialtyHubPage } from './components/specialty/SpecialtyHubPage';
 import { WhyUsSection } from './components/home/WhyUsSection';
 import { TestimonialsSection } from './components/home/TestimonialsSection';
 import { ContactSection } from './components/contact/ContactSection';
 import { Footer } from './components/layout/Footer';
-import { ShopPage } from './components/shop/ShopPage';
-import { ProductDetailPage } from './components/product/ProductDetailPage';
-import { CheckoutPage } from './components/checkout/CheckoutPage';
-import { OrderConfirmationPage } from './components/checkout/OrderConfirmationPage';
-import { CustomerDashboard } from './components/dashboard/CustomerDashboard';
-import { AdminDashboard, AdminDashboardTab } from './components/admin/AdminDashboard';
-import { SeasonalOffersPage } from './components/offers/SeasonalOffersPage';
-import { DynamicLandingPage } from './components/landing/DynamicLandingPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { CustomizerModal } from './components/customizer/CustomizerModal';
 import { CartDrawer } from './components/cart/CartDrawer';
@@ -34,6 +24,31 @@ import { Toaster } from 'sonner';
 import { COMPANY_CONTACT } from './data/mockData';
 import { OrderRecord, useCartStore } from './store/useCartStore';
 import { useAuthStore } from './store/useAuthStore';
+
+// Heavy route-level views are lazy-loaded (React.lazy) so the initial bundle
+// stays small — the admin dashboard (recharts) alone used to add ~700KB.
+const PortfolioPage = lazy(() => import('./components/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
+const SpecialtyHubPage = lazy(() => import('./components/specialty/SpecialtyHubPage').then((m) => ({ default: m.SpecialtyHubPage })));
+const ShopPage = lazy(() => import('./components/shop/ShopPage').then((m) => ({ default: m.ShopPage })));
+const ProductDetailPage = lazy(() => import('./components/product/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CheckoutPage = lazy(() => import('./components/checkout/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const OrderConfirmationPage = lazy(() => import('./components/checkout/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })));
+const CustomerDashboard = lazy(() => import('./components/dashboard/CustomerDashboard').then((m) => ({ default: m.CustomerDashboard })));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const SeasonalOffersPage = lazy(() => import('./components/offers/SeasonalOffersPage').then((m) => ({ default: m.SeasonalOffersPage })));
+const DynamicLandingPage = lazy(() => import('./components/landing/DynamicLandingPage').then((m) => ({ default: m.DynamicLandingPage })));
+
+import type { AdminDashboardTab } from './components/admin/AdminDashboard';
+
+// Shared loading fallback for lazy views
+const ViewFallback = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-10 h-10 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+      <span className="text-xs font-bold text-slate-500">...</span>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'landing'>('home');
@@ -122,7 +137,8 @@ export default function App() {
   };
 
   const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: SpecialtyId) => {
-    if (view === 'dashboard' && !isAuthenticated) {
+    // Guard authenticated-only areas
+    if ((view === 'dashboard' || view === 'admin') && !isAuthenticated) {
       setAuthModalOpen(true);
       return;
     }
@@ -155,6 +171,7 @@ export default function App() {
 
       {/* Main Content Router */}
       <main className="flex-1">
+        <Suspense fallback={<ViewFallback />}>
         {currentView === 'landing' && (
           <DynamicLandingPage
             onBackToHome={() => handleNavigate(previousView === 'admin' ? 'admin' : 'home')}
@@ -269,6 +286,7 @@ export default function App() {
             onSelectProduct={handleSelectProduct}
           />
         )}
+        </Suspense>
       </main>
 
       {/* Footer - Hidden on landing page */}

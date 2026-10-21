@@ -105,16 +105,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const currentConfig = roleConfig[currentRole];
 
-  // Auto switch tab and handle smooth access
+  // Auto switch tab and enforce role permissions
   const handleSelectTab = (tab: AdminDashboardTab) => {
     if (!currentConfig.allowedTabs.includes(tab)) {
-      // Auto-elevate to super_admin so admin tabs are never stuck
-      setCurrentRole('super_admin');
-      toast.info(
+      // Block restricted tabs — never auto-elevate the active role
+      toast.error(
         isAr
-          ? `تم تمكين الوصول وتفعيل صلاحيات المدير العام لهذا التبويب`
-          : `Switched to Super Admin to access this tab`
+          ? `التبويب "${tab}" غير مصرّح لدور ${currentConfig.titleAr}. يتطلب صلاحية المدير العام.`
+          : `Tab "${tab}" is not allowed for ${currentConfig.titleEn}. Requires Super Admin privileges.`
       );
+      return;
     }
     setActiveTab(tab);
   };
@@ -201,7 +201,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="text-xs text-purple-200 shrink-0 font-medium">
             <span>{isAr ? 'التبويبات المتاحة لك:' : 'Accessible tabs:'} </span>
             <span className="font-mono font-bold text-white">
-              {currentConfig.allowedTabs.length} / 6
+              {currentConfig.allowedTabs.length} / 8
             </span>
           </div>
         </div>

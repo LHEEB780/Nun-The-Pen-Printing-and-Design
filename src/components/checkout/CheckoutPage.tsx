@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useCartStore, PaymentMethod, ShippingInfo, OrderRecord } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useOffersStore } from '../../store/useOffersStore';
+import { useAdminStore } from '../../store/useAdminStore';
 import {
   ArrowRight,
   ArrowLeft,
@@ -20,6 +23,7 @@ import {
   MapPin,
   Phone,
   User,
+  Tag,
 } from 'lucide-react';
 
 interface CheckoutPageProps {
@@ -35,6 +39,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const isAr = i18n.language === 'ar';
   const { items, getSubtotal, clearCart, setLastOrder } = useCartStore();
   const { user } = useAuthStore();
+  const { offers } = useOffersStore();
+  const { addOrder: addAdminOrder } = useAdminStore();
 
   const subtotal = getSubtotal();
 
@@ -48,6 +54,39 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [address, setAddress] = useState(user?.address || '');
   const [deliveryType, setDeliveryType] = useState<'standard' | 'express'>('standard');
   const [notes, setNotes] = useState('');
+
+  // Promo code redemption (validated against active, non-expired seasonal offers)
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+
+  const applyPromoCode = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    const now = new Date();
+    const match = offers.find(
+      (o) =>
+        o.promoCode?.toUpperCase() === code &&
+        o.isActive &&
+        (!o.expiresAt || new Date(`${o.expiresAt}T23:59:59`) >= now)
+    );
+    if (match) {
+      setAppliedPromo({ code, discountPercent: match.discountPercentage });
+      toast.success(
+        isAr
+          ? `تم تطبيق كود الخصم ${code} — خصم ${match.discountPercentage}% على مجموع المنتجات`
+          : `Promo code ${code} applied — ${match.discountPercentage}% off subtotal`
+      );
+    } else {
+      setAppliedPromo(null);
+      toast.error(
+        isAr
+          ? `كود الخصم "${code}" غير صالح أو منتهي الصلاحية`
+          : `Promo code "${code}" is invalid or expired`
+      );
+    }
+  };
+
+  const promoDiscountIQD = appliedPromo ? Math.round((subtotal * appliedPromo.discountPercent) / 100) : 0;
 
   // Step 2: Proof approval agreement
   const [proofApproved, setProofApproved] = useState(true);
@@ -90,13 +129,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   // Calculate Shipping fee
   const shippingCost = useMemo(() => {
-    if (subtotal >= 150000) return 0; // Free shipping threshold for large custom orders
     const isBaghdad = governorate.includes('بغداد') || governorate.toLowerCase().includes('baghdad');
+    // Express delivery always carries its flat premium fee
     if (deliveryType === 'express') return 10000;
+    // Free standard shipping threshold for large custom orders
+    if (subtotal >= 150000) return 0;
     return isBaghdad ? 5000 : 8000;
   }, [governorate, deliveryType, subtotal]);
 
-  const grandTotal = subtotal + shippingCost;
+  const grandTotal = Math.max(0, subtotal - promoDiscountIQD + shippingCost);
 
   // Placeholder Payment Handlers
   const processZainCashPayment = async (): Promise<{ success: boolean; transactionId: string }> => {
@@ -129,6 +170,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     return { success: true, transactionId: `PAYPAL-TX-${Math.floor(100000 + Math.random() * 900000)}` };
   };
 
+  // Iraqi phone number validation (07XXXXXXXXX / +9647XXXXXXXXX)
+  const isValidIraqiPhone = (raw: string): boolean => {
+    const normalized = raw.replace(/[\s\-()]/g, '');
+    return /^(?:\+?964|0)?7\d{9}$/.test(normalized);
+  };
+
   const handleFinalSubmitPayment = async () => {
     setIsProcessingPayment(true);
 
@@ -148,8 +195,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       }
 
       if (result.success) {
-        // Generate Order ID NP-2026-XXXX
-        const orderId = `NP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+        // Unique, collision-safe Order ID (timestamp-based base36)
+        const orderId = `NP-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
 
         const gatewayNames: Record<PaymentMethod, { ar: string; en: string }> = {
           zaincash: { ar: 'زين كاش (ZainCash)', en: 'ZainCash Wallet' },
@@ -188,7 +235,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           subtotal,
           shippingCost,
           grandTotal,
+          promoCode: appliedPromo?.code,
+          promoDiscountIQD,
         };
+
+        // Mirror the order into the Admin Workshop Pipeline so staff see it immediately
+        addAdminOrder(completedOrder);
 
         setLastOrder(completedOrder);
         clearCart();
@@ -293,7 +345,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (fullName && phone && address) setCurrentStep(2);
+                if (!fullName.trim() || !phone.trim() || !address.trim()) {
+                  toast.error(isAr ? 'يرجى تعبئة جميع الحقول الإلزامية (*)' : 'Please fill all required fields (*)');
+                  return;
+                }
+                if (!isValidIraqiPhone(phone)) {
+                  toast.error(
+                    isAr
+                      ? 'رقم الهاتف غير صحيح — أدخل رقم عراقي صالح مثل 07801234567 أو +9647801234567'
+                      : 'Invalid phone — enter a valid Iraqi number e.g. 07801234567 or +9647801234567'
+                  );
+                  return;
+                }
+                setCurrentStep(2);
               }}
               className="space-y-6"
             >
@@ -514,6 +578,52 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <span>{isAr ? 'مجموع المنتجات:' : 'Subtotal:'}</span>
                 <span className="font-mono font-bold">{subtotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}</span>
               </div>
+
+              {/* Promo Code Redemption */}
+              <div className="p-3 rounded-xl bg-white border border-slate-200">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 mb-2">
+                  <Tag className="w-3.5 h-3.5 text-amber-600" />
+                  {isAr ? 'كود الخصم الترويجي (من صفحة العروض)' : 'Promo code (from Seasonal Offers page)'}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                    placeholder={isAr ? 'مثال: BOXES25' : 'e.g. BOXES25'}
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyPromoCode}
+                    className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {isAr ? 'تطبيق' : 'Apply'}
+                  </button>
+                </div>
+                {appliedPromo && (
+                  <div className="flex items-center justify-between mt-2 text-[11px] font-bold text-emerald-700">
+                    <span>✓ {appliedPromo.code} (−{appliedPromo.discountPercent}%)</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedPromo(null);
+                        setPromoInput('');
+                      }}
+                      className="text-slate-400 hover:text-rose-600 underline cursor-pointer"
+                    >
+                      {isAr ? 'إزالة' : 'Remove'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {promoDiscountIQD > 0 && (
+                <div className="flex items-center justify-between text-emerald-700">
+                  <span>{isAr ? `خصم الكود الترويجي (${appliedPromo?.code}):` : `Promo discount (${appliedPromo?.code}):`}</span>
+                  <span className="font-mono font-bold">−{promoDiscountIQD.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span>
                   {isAr ? 'أجور الشحن والتوصيل (' : 'Delivery Fee ('}

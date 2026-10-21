@@ -11,9 +11,49 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
+
+// --- Lightweight in-memory rate limiter for AI endpoints (no external deps) ---
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const clientKey =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(clientKey);
+
+  if (!bucket || now > bucket.resetAt) {
+    rateLimitBuckets.set(clientKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+
+  bucket.count += 1;
+  if (bucket.count > RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({
+      success: false,
+      error: 'Too many requests — please try again in a minute.',
+    });
+  }
+  return next();
+}
+
+// Periodically purge expired buckets to keep memory bounded
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitBuckets) {
+    if (now > bucket.resetAt) rateLimitBuckets.delete(key);
+  }
+}, 5 * 60_000).unref();
+
+// Cap & sanitize text fields coming from clients before they reach Gemini prompts
+function capField(value: unknown, maxLen = 500): string {
+  if (typeof value !== 'string') return '';
+  return value.slice(0, maxLen).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+}
 
 // Initialize GoogleGenAI SDK on the server side
 const apiKey = process.env.GEMINI_API_KEY;
@@ -30,7 +70,7 @@ if (apiKey) {
 }
 
 // AI Design Assistant API Endpoint
-app.post('/api/ai/design-assistant', async (req, res) => {
+app.post('/api/ai/design-assistant', rateLimit, async (req, res) => {
   try {
     const {
       productTitle = '',
@@ -43,18 +83,30 @@ app.post('/api/ai/design-assistant', async (req, res) => {
       dimensions = '',
     } = req.body;
 
+    // Sanitize & cap all client-provided text before prompt interpolation
+    const safe = {
+      productTitle: capField(productTitle, 120),
+      category: capField(category, 80),
+      userText: capField(userText, 300),
+      subtitle: capField(subtitle, 200),
+      material: capField(material, 120),
+      ledColor: capField(ledColor, 80),
+      businessType: capField(businessType, 120),
+      dimensions: capField(dimensions, 80),
+    };
+
     // If Gemini API is configured with a real key, call Gemini with a 5s timeout
     const hasValidKey = apiKey && apiKey.length > 10 && apiKey !== 'MY_GEMINI_API_KEY';
     if (aiClient && hasValidKey) {
       const prompt = `أنت خبير تصاميم هندسية وتصنيع إعلاني ولوحات أكريليك مضيئة (3D Acrylic & LED Signage) في مطبعة واستوديو "نون والقلم" في بغداد.
-يقوم العميل حالياً بتخصيص منتج: "${productTitle}" من قسم "${category}".
+يقوم العميل حالياً بتخصيص منتج: "${safe.productTitle}" من قسم "${safe.category}".
 البيانات المدخلة من العميل:
-- النص الرئيسي المطلوب كتابته أو حفره: "${userText}"
-- النص الفرعي / المهنة / الصفة: "${subtitle}"
-- نوع النشاط التجاري / الاستخدام: "${businessType || 'عام/مكتبي'}"
-- الخامة المختارة: "${material}"
-- لون إضاءة الليد المختارة: "${ledColor}"
-- المقاس: "${dimensions}"
+- النص الرئيسي المطلوب كتابته أو حفره: "${safe.userText}"
+- النص الفرعي / المهنة / الصفة: "${safe.subtitle}"
+- نوع النشاط التجاري / الاستخدام: "${safe.businessType || 'عام/مكتبي'}"
+- الخامة المختارة: "${safe.material}"
+- لون إضاءة الليد المختارة: "${safe.ledColor}"
+- المقاس: "${safe.dimensions}"
 
 المطلوب: تقديم استشارة وتنسيق ذكي للتصميم بصيغة JSON فقط:
 1. "refinedTitleAr": تحسين النص الرئيسي وتنسيقه لغوياً وبصرياً ليكون مناسباً لقص الليزر أو الحفر أو مجسمات الحروف.
@@ -98,14 +150,14 @@ app.post('/api/ai/design-assistant', async (req, res) => {
       luxury: 'للتجارة العامة والتوكيلات الحصرية | بغداد',
     };
 
-    const isDoc = /دكتور|طبيب|عيادة|مركز طبي|dr|clinic/i.test(`${userText} ${businessType}`);
-    const isLaw = /محام|قانون|عدل|حقوق/i.test(`${userText} ${businessType}`);
-    const isEng = /مهندس|هندسة|معمار|تصميم/i.test(`${userText} ${businessType}`);
+    const isDoc = /دكتور|طبيب|عيادة|مركز طبي|dr|clinic/i.test(`${safe.userText} ${safe.businessType}`);
+    const isLaw = /محام|قانون|عدل|حقوق/i.test(`${safe.userText} ${safe.businessType}`);
+    const isEng = /مهندس|هندسة|معمار|تصميم/i.test(`${safe.userText} ${safe.businessType}`);
 
     const fallbackData = {
-      refinedTitleAr: userText.trim() || 'نون والقلم للدعاية والإعلان',
+      refinedTitleAr: safe.userText.trim() || 'نون والقلم للدعاية والإعلان',
       suggestedSubtitleAr:
-        subtitle.trim() ||
+        safe.subtitle.trim() ||
         (isDoc ? defaultSubtitles.doctor : isLaw ? defaultSubtitles.lawyer : isEng ? defaultSubtitles.engineer : 'حلول الدعاية والطباعة الفاخرة'),
       recommendedFont: isDoc ? 'الخط العربي المعاصر الهندسي' : isLaw ? 'خط الثلث الفاخر' : 'الخط الكوفي المودرن',
       recommendedLedColor: isDoc ? 'أزرق جليدي طبي (Ice Cyan)' : isLaw ? 'ذهبي ملكي دافئ (Warm Amber 3000K)' : 'أبيض ناصع كريستالي (Pure White 6500K)',
@@ -123,7 +175,7 @@ app.post('/api/ai/design-assistant', async (req, res) => {
 });
 
 // Dedicated AI Product Design Generator Endpoint
-app.post('/api/ai/design-product', async (req, res) => {
+app.post('/api/ai/design-product', rateLimit, async (req, res) => {
   try {
     const {
       companyName = '',
@@ -136,7 +188,19 @@ app.post('/api/ai/design-product', async (req, res) => {
       productTitle = 'لوحة أكريليك مضيئة LED مخصصة',
     } = req.body;
 
-    const fullContext = `${companyName} ${subtitle} ${designNotes}`.trim();
+    // Sanitize & cap all client-provided text before prompt interpolation
+    const safe = {
+      companyName: capField(companyName, 200),
+      subtitle: capField(subtitle, 200),
+      phone: capField(phone, 40),
+      website: capField(website, 200),
+      designNotes: capField(designNotes, 500),
+      ledColor: capField(ledColor, 80),
+      dimension: capField(dimension, 80),
+      productTitle: capField(productTitle, 120),
+    };
+
+    const fullContext = `${safe.companyName} ${safe.subtitle} ${safe.designNotes}`.trim();
 
     // Helper to determine industry & emblem intelligently
     const detectIndustry = (text: string) => {
@@ -174,13 +238,13 @@ app.post('/api/ai/design-product', async (req, res) => {
     if (aiClient && hasValidKey) {
       const prompt = `أنت كبير مهندسي التصميم الصناعي وتصنيع لوحات الأكريليك المضيئة في مطبعة "نون والقلم" في بغداد.
 طلب العميل تصميم منتج مخصص بناءً على المعلومات التالية:
-- اسم الشركة / النص الرئيسي: "${companyName || 'شركة الأفق الدولية'}"
-- السطر الفرعي / النشاط: "${subtitle || 'للسياحة والسفر'}"
-- رقم الهاتف: "${phone || 'غير محدد'}"
-- الموقع الإلكتروني: "${website || 'غير محدد'}"
-- ملاحظات وتفاصيل إضافية من العميل: "${designNotes || 'لا توجد ملاحظات خاصة'}"
-- لون إضاءة LED المختار: "${ledColor || 'أزرق سماوي'}"
-- المقاس المطلوب: "${dimension || '20 × 15 سم'}"
+- اسم الشركة / النص الرئيسي: "${safe.companyName || 'شركة الأفق الدولية'}"
+- السطر الفرعي / النشاط: "${safe.subtitle || 'للسياحة والسفر'}"
+- رقم الهاتف: "${safe.phone || 'غير محدد'}"
+- الموقع الإلكتروني: "${safe.website || 'غير محدد'}"
+- ملاحظات وتفاصيل إضافية من العميل: "${safe.designNotes || 'لا توجد ملاحظات خاصة'}"
+- لون إضاءة LED المختار: "${safe.ledColor || 'أزرق سماوي'}"
+- المقاس المطلوب: "${safe.dimension || '20 × 15 سم'}"
 
 المطلوب: توليد مواصفات تصميم متكاملة وذكية للمنتج بصيغة JSON فقط:
 {
@@ -191,10 +255,10 @@ app.post('/api/ai/design-product', async (req, res) => {
   "calligraphyStyle": "أحد الخطوط: ruqaa أو amiri أو kufi أو cairo",
   "sloganAr": "شعار تسويقي فاخر قصير يناسب النشاط (مثلاً: نقاوة تدوم، أو آفاق لا حدود لها)",
   "specs": {
-    "dimensions": "${dimension || '20 × 15 سم'}",
+    "dimensions": "${safe.dimension || '20 × 15 سم'}",
     "acrylicType": "أكريليك مسبوك نقي 100% سماكة 5 ملم عالي التوصيل الضوئي (Cast Acrylic)",
     "etchingType": "حفر ليزري بؤري فائق الدقة (CO2 Micro-Laser Engraving 0.2mm) بحواف مصقولة بالألماس",
-    "illumination": "شريط LED كولد نيون فائق اللمعان بلون ${ledColor || 'أزرق'} بدرجة سطوع 1200 لومن",
+    "illumination": "شريط LED كولد نيون فائق اللمعان بلون ${safe.ledColor || 'أزرق'} بدرجة سطوع 1200 لومن",
     "base": "قاعدة خشبية فاخرة أو أكريليك مصقول مدمجة بمفتاح لمسي ومنفذ Type-C للشحن والتشغيل",
     "appliedNotes": "شرح احترافي موجز في سطرين عن كيفية معالجة ملاحظات العميل وتطبيقها في التصميم"
   },

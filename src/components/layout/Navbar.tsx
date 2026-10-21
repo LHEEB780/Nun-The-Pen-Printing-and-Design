@@ -638,17 +638,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onNavigate('admin');
-                    }}
-                    type="button"
-                    className="w-full text-start px-3 py-2 rounded-lg text-sm font-bold text-indigo-700 hover:bg-indigo-50 transition-colors flex items-center gap-2"
-                  >
-                    <ShieldAlert className="w-4 h-4 text-indigo-600" />
-                    <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard'}</span>
-                  </button>
+                  {/* Admin panel is auth-guarded — hidden from logged-out visitors */}
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);

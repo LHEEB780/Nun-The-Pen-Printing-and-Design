@@ -46,6 +46,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else {
         setErrorMessage(res.error || (isAr ? 'فشل تسجيل الدخول' : 'Login failed'));
       }
+    } catch (err) {
+      console.error('Login error:', err);
+      setErrorMessage(isAr ? 'حدث خطأ غير متوقع، حاول مرة أخرى' : 'Unexpected error, please try again');
     } finally {
       setLoading(false);
     }
@@ -75,6 +78,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else {
         setErrorMessage(res.error || (isAr ? 'فشل إنشاء الحساب' : 'Registration failed'));
       }
+    } catch (err) {
+      console.error('Registration error:', err);
+      setErrorMessage(isAr ? 'حدث خطأ غير متوقع، حاول مرة أخرى' : 'Unexpected error, please try again');
     } finally {
       setLoading(false);
     }
@@ -88,7 +94,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const res = await forgotPassword(email);
       if (res.success) {
         setSuccessMessage(isAr ? res.message : 'Password reset link sent to your email.');
+      } else {
+        setErrorMessage(isAr ? 'تعذر إرسال رابط الاستعادة' : 'Could not send reset link');
       }
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      setErrorMessage(isAr ? 'حدث خطأ غير متوقع، حاول مرة أخرى' : 'Unexpected error, please try again');
     } finally {
       setLoading(false);
     }
@@ -96,13 +107,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleDemoLogin = async () => {
     setLoading(true);
-    await login('laheeb@noonwalqalam.com', 'demo1234');
-    setSuccessMessage(isAr ? 'تم الدخول بالحساب التجريبي!' : 'Logged in as Demo User!');
-    setLoading(false);
-    setTimeout(() => {
-      onClose();
-      if (onLoginSuccess) onLoginSuccess();
-    }, 700);
+    try {
+      const res = await login('laheeb@noonwalqalam.com', 'demo1234');
+      if (res.success) {
+        setSuccessMessage(isAr ? 'تم الدخول بالحساب التجريبي!' : 'Logged in as Demo User!');
+        setTimeout(() => {
+          onClose();
+          if (onLoginSuccess) onLoginSuccess();
+        }, 700);
+      } else {
+        setErrorMessage(res.error || (isAr ? 'فشل الدخول التجريبي' : 'Demo login failed'));
+      }
+    } catch (err) {
+      console.error('Demo login error:', err);
+      setErrorMessage(isAr ? 'حدث خطأ غير متوقع، حاول مرة أخرى' : 'Unexpected error, please try again');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;

@@ -83,8 +83,9 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
       return matchesCategory && matchesSearch;
     }).sort((a, b) => {
-      const priceA = a.basePriceUSD || a.basePrice;
-      const priceB = b.basePriceUSD || b.basePrice;
+      // Always compare in IQD — mixing USD & IQD magnitudes breaks sorting
+      const priceA = a.basePrice;
+      const priceB = b.basePrice;
       if (sortBy === 'price-asc') return priceA - priceB;
       if (sortBy === 'price-desc') return priceB - priceA;
       return 0;
@@ -199,7 +200,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredProducts.map((prod) => {
-              const baseUSD = prod.basePriceUSD || Math.round(prod.basePrice / 1300);
+              // USD badge derived from IQD to keep currencies consistent
+              const baseUSD = Math.round(prod.basePrice / 1300);
 
               return (
                 <div

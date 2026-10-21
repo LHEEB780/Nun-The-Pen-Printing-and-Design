@@ -345,6 +345,10 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
     const qty = prod.minQuantity || 1;
     const dim = prod.dimensions?.[0] || { labelAr: 'قياسي', labelEn: 'Standard' };
     const mat = prod.materials?.[0] || { labelAr: 'قياسي فاخر', labelEn: 'Standard' };
+    // Apply quantity-tier discount natively in IQD so quick-add matches product-page pricing
+    const tierDiscount =
+      [...(prod.tierPricing || [])].reverse().find((tier) => qty >= tier.minQty)?.discountPercent || 0;
+    const quickUnitPrice = Math.round(prod.basePrice * (1 - tierDiscount / 100));
     addItem({
       productId: prod.id,
       titleAr: prod.titleAr,
@@ -352,13 +356,14 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
       image: prod.image,
       category: prod.category,
       quantity: qty,
-      unitPrice: prod.basePrice,
-      totalPrice: prod.basePrice * qty,
+      unitPrice: quickUnitPrice,
+      totalPrice: quickUnitPrice * qty,
       customOptions: {
         dimensionLabelAr: dim.labelAr,
         dimensionLabelEn: dim.labelEn,
         materialLabelAr: mat.labelAr,
         materialLabelEn: mat.labelEn,
+        discountPercentage: tierDiscount,
       },
     });
     setCartOpen(true);

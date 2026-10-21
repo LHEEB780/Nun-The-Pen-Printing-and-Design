@@ -64,7 +64,7 @@ export const INITIAL_OFFERS: OfferItem[] = [
     ],
     isFeatured: true,
     isActive: true,
-    productId: 'prod-rigid-perfume-box',
+    productId: 'prod-perfume-luxury-box',
     whatsappInquiryTextAr: 'مرحباً استوديو نُون والقَلَم، أود الاستفادة من كود الخصم (BOXES25) لعرض علب الكرتون المقوى.',
     whatsappInquiryTextEn: 'Hello Noon & Pen, I would like to claim promo code BOXES25 for custom rigid boxes.',
     createdAt: '2026-03-01',
@@ -175,7 +175,7 @@ export const INITIAL_OFFERS: OfferItem[] = [
     ],
     isFeatured: false,
     isActive: true,
-    productId: 'prod-acrylic-award',
+    productId: 'prod-crystal-award-trophy',
     whatsappInquiryTextAr: 'أود الاستفسار عن عرض دروع التكريم الكريستالية كود (AWARD30).',
     whatsappInquiryTextEn: 'Inquiry regarding the Crystal Awards promotion (AWARD30).',
     createdAt: '2026-03-15',
@@ -281,11 +281,15 @@ export const useOffersStore = create<OffersStore>()(
       },
 
       getActiveOffers: () => {
-        return get().offers.filter((o) => o.isActive);
+        const now = new Date();
+        return get().offers.filter(
+          (o) => o.isActive && (!o.expiresAt || new Date(`${o.expiresAt}T23:59:59`) >= now)
+        );
       },
 
       getFeaturedOffer: () => {
-        return get().offers.find((o) => o.isActive && o.isFeatured) || get().offers.find((o) => o.isActive);
+        const active = get().getActiveOffers();
+        return active.find((o) => o.isFeatured) || active[0];
       },
     }),
     {
