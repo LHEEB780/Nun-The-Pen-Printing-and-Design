@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Tag,
@@ -49,28 +49,41 @@ export const SeasonalOffersPage: React.FC<SeasonalOffersPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<OfferCategory>('all');
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
-  // Countdown timer state (simulating flash seasonal countdown)
-  const [timeLeft, setTimeLeft] = useState({
-    days: 4,
-    hours: 18,
-    minutes: 42,
-    seconds: 15,
-  });
+  // Real countdown: derived from the nearest upcoming expiry date among active offers
+  const activeOffersRaw = offers.filter((o) => o.isActive);
+  const countdownTarget = useMemo(() => {
+    const futureDates = activeOffersRaw
+      .map((o) => (o.expiresAt ? new Date(`${o.expiresAt}T23:59:59`).getTime() : NaN))
+      .filter((ts) => !isNaN(ts) && ts > Date.now())
+      .sort((a, b) => b - a);
+    return futureDates[futureDates.length - 1] || null;
+  }, [activeOffersRaw]);
+
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        return prev;
+    if (!countdownTarget) return;
+    const compute = () => {
+      const diff = Math.max(0, countdownTarget - Date.now());
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
       });
-    }, 1000);
+    };
+    compute();
+    const timer = setInterval(compute, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [countdownTarget]);
 
-  const activeOffers = offers.filter((o) => o.isActive);
+  const activeOffers = useMemo(
+    () =>
+      activeOffersRaw.filter(
+        (o) => !o.expiresAt || new Date(`${o.expiresAt}T23:59:59`) >= new Date()
+      ),
+    [activeOffersRaw]
+  );
   const filteredOffers =
     selectedCategory === 'all'
       ? activeOffers

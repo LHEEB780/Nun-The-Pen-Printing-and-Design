@@ -10,6 +10,7 @@ import {
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { USD_TO_IQD_RATE } from '../../hooks/usePricingCalculator';
 import {
   ArrowLeft,
   ArrowRight,
@@ -193,8 +194,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const baseCalculated = (product.basePrice * dimensionMultiplier + materialAddPrice);
   const unitPriceIQD = Math.round(baseCalculated * (1 - discountPercent / 100));
   const totalPriceIQD = unitPriceIQD * quantity;
-  const unitPriceUSD = Math.round((product.basePriceUSD || 24) * dimensionMultiplier * (1 - discountPercent / 100));
-  const totalPriceUSD = unitPriceUSD * quantity;
+  // USD is display-only, always derived from the IQD amount to keep both currencies consistent
+  const unitPriceUSD = Math.round(unitPriceIQD / USD_TO_IQD_RATE);
+  const totalPriceUSD = Math.round(totalPriceIQD / USD_TO_IQD_RATE);
 
   // File Upload Handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,9 +251,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       category: product.category,
       image: galleryPhotos[activeImageIndex] || product.image,
       quantity,
-      unitPrice: unitPriceUSD,
-      originalUnitPrice: Math.round((product.basePriceUSD || 24) * dimensionMultiplier),
-      totalPrice: totalPriceUSD,
+      // Cart stores IQD natively — the app-wide currency is Iraqi Dinar
+      unitPrice: unitPriceIQD,
+      originalUnitPrice: Math.round(product.basePrice * dimensionMultiplier),
+      totalPrice: totalPriceIQD,
       customOptions: {
         customText: `${companyName}${subtitle ? ` · ${subtitle}` : ''}`,
         dimensionLabelAr: selectedDimension.labelAr,

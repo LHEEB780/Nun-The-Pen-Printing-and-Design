@@ -139,7 +139,7 @@ const INITIAL_ORDERS: OrderRecord[] = [
     items: [
       {
         id: 'ord-item-3',
-        productId: 'prod-acrylic-award',
+        productId: 'prod-crystal-award-trophy',
         titleAr: 'درع تكريم أكريليك كريستالي فاخر مع قاعدة خشبية',
         titleEn: 'Luxury Crystal Acrylic Trophy with Walnut Base',
         image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=900&q=80',
@@ -288,8 +288,10 @@ const INITIAL_PROOFS: DigitalProof[] = [
 ];
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
-  user: DEMO_USER,
-  isAuthenticated: true, // Logged in by default with demo user for smooth testing
+  // Start logged-out in production: every visitor gets a clean session.
+  // (Demo account remains available through the login modal for evaluation.)
+  user: null,
+  isAuthenticated: false,
   savedDesigns: INITIAL_SAVED_DESIGNS,
   pastOrders: INITIAL_ORDERS,
   digitalProofs: INITIAL_PROOFS,

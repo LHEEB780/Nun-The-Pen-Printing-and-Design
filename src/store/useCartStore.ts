@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface CartCustomOptions {
   customText?: string;
@@ -98,6 +99,8 @@ export interface OrderRecord {
   subtotal: number;
   shippingCost: number;
   grandTotal: number;
+  promoCode?: string;
+  promoDiscountIQD?: number;
   manufacturingStatus?: ManufacturingStatus;
   manufacturingStepIndex?: number;
   estimatedDelivery?: string;
@@ -121,48 +124,57 @@ interface CartStore {
   getSubtotal: () => number;
 }
 
-export const useCartStore = create<CartStore>((set, get) => ({
-  items: [],
-  isOpen: false,
-  lastOrder: null,
-  addItem: (itemData) => {
-    const newItem: CartItem = {
-      ...itemData,
-      id: `${itemData.productId}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    };
-    set((state) => ({
-      items: [newItem, ...state.items],
-      isOpen: true, // open drawer on add to acknowledge user action
-    }));
-  },
-  removeItem: (id) => {
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-    }));
-  },
-  updateQuantity: (id, delta) => {
-    set((state) => ({
-      items: state.items
-        .map((item) => {
-          if (item.id === id) {
-            const newQty = Math.max(1, item.quantity + delta);
-            return {
-              ...item,
-              quantity: newQty,
-              totalPrice: item.unitPrice * newQty,
-            };
-          }
-          return item;
-        }),
-    }));
-  },
-  clearCart: () => set({ items: [] }),
-  setIsOpen: (isOpen) => set({ isOpen }),
-  setLastOrder: (lastOrder) => set({ lastOrder }),
-  getTotalItemsCount: () => {
-    return get().items.reduce((sum, item) => sum + item.quantity, 0);
-  },
-  getSubtotal: () => {
-    return get().items.reduce((sum, item) => sum + item.totalPrice, 0);
-  },
-}));
+export const useCartStore = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      isOpen: false,
+      lastOrder: null,
+      addItem: (itemData) => {
+        const newItem: CartItem = {
+          ...itemData,
+          id: `${itemData.productId}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        };
+        set((state) => ({
+          items: [newItem, ...state.items],
+          isOpen: true, // open drawer on add to acknowledge user action
+        }));
+      },
+      removeItem: (id) => {
+        set((state) => ({
+          items: state.items.filter((item) => item.id !== id),
+        }));
+      },
+      updateQuantity: (id, delta) => {
+        set((state) => ({
+          items: state.items
+            .map((item) => {
+              if (item.id === id) {
+                const newQty = Math.max(1, item.quantity + delta);
+                return {
+                  ...item,
+                  quantity: newQty,
+                  totalPrice: item.unitPrice * newQty,
+                };
+              }
+              return item;
+            }),
+        }));
+      },
+      clearCart: () => set({ items: [] }),
+      setIsOpen: (isOpen) => set({ isOpen }),
+      setLastOrder: (lastOrder) => set({ lastOrder }),
+      getTotalItemsCount: () => {
+        return get().items.reduce((sum, item) => sum + item.quantity, 0);
+      },
+      getSubtotal: () => {
+        return get().items.reduce((sum, item) => sum + item.totalPrice, 0);
+      },
+    }),
+    {
+      name: 'noon_walqalam_cart_storage_v1',
+      // Persist cart contents + last order across refreshes (not UI drawer state)
+      partialize: (state) => ({ items: state.items, lastOrder: state.lastOrder }),
+    }
+  )
+);

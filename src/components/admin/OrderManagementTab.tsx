@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminStore, OrderWorkflowStatus, AdminOrderRecord } from '../../store/useAdminStore';
 import {
@@ -27,7 +27,13 @@ export const OrderManagementTab: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | OrderWorkflowStatus>('all');
-  const [inspectOrder, setInspectOrder] = useState<AdminOrderRecord | null>(adminOrders[0] || null);
+  // Keep only the selected ORDER ID in state and derive the record from the store,
+  // so status/payment/notes updates reflect immediately in the inspector panel.
+  const [inspectOrderId, setInspectOrderId] = useState<string | null>(adminOrders[0]?.orderId || null);
+  const inspectOrder = useMemo(
+    () => adminOrders.find((o) => o.orderId === inspectOrderId) || null,
+    [adminOrders, inspectOrderId]
+  );
   const [downloadSuccessToast, setDownloadSuccessToast] = useState('');
 
   const filteredOrders = adminOrders.filter((ord) => {
@@ -172,7 +178,7 @@ export const OrderManagementTab: React.FC = () => {
                 return (
                   <div
                     key={ord.orderId}
-                    onClick={() => setInspectOrder(ord)}
+                    onClick={() => setInspectOrderId(ord.orderId)}
                     className={`p-4 sm:p-5 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                       isSelected ? 'bg-purple-50/80 border-s-4 border-purple-600' : 'hover:bg-slate-50/60'
                     }`}
