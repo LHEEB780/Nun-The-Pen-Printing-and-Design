@@ -54,7 +54,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
-  const { addItem, setIsOpen: setCartOpen } = useCartStore();
+  const { addItem, setIsOpen: setCartOpen, getTotalItemsCount } = useCartStore();
+  const totalCartCount = getTotalItemsCount();
   const { addDigitalProof } = useAuthStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
   const productsList = useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
@@ -390,16 +391,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   };
 
   return (
-    <div className="pt-24 pb-28 bg-slate-50/60 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="pt-2.5 sm:pt-4 pb-28 bg-slate-50/60 min-h-screen">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-6">
         
-        {/* Navigation Breadcrumb & Compact Return Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center gap-2">
+        {/* Navigation Breadcrumb & Compact Return Bar (Sticky & Space-Saving) */}
+        <div className="sticky top-2 z-30 flex flex-wrap items-center justify-between gap-2 bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl border border-slate-200/90 shadow-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={onBackToShop}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950 hover:bg-amber-900 active:scale-95 text-amber-200 hover:text-amber-100 border border-amber-800/40 text-xs font-bold transition-all cursor-pointer shadow-2xs group"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-950 hover:bg-amber-900 active:scale-95 text-amber-200 hover:text-amber-100 border border-amber-800/40 text-xs font-bold transition-all cursor-pointer shadow-2xs group"
               title={isAr ? 'العودة للاستوديو' : 'Back to Studio'}
             >
               {isAr ? (
@@ -407,22 +408,39 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               ) : (
                 <ArrowLeft className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               )}
-              <span>{isAr ? 'عودة للاستوديو' : 'Back to Studio'}</span>
+              <span className="hidden sm:inline">{isAr ? 'عودة للاستوديو' : 'Back to Studio'}</span>
+              <span className="sm:hidden">{isAr ? 'عودة' : 'Back'}</span>
             </button>
 
-            {/* Share Product Button in Navigation Bar */}
+            {/* Quick Shopping Cart Button */}
+            <button
+              onClick={() => setCartOpen(true)}
+              type="button"
+              className="relative inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-200/80 text-xs font-bold transition-all cursor-pointer shadow-2xs group"
+              title={isAr ? 'سلة المشتريات' : 'Shopping Cart'}
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-purple-700" />
+              <span className="hidden xs:inline">{isAr ? 'السلة' : 'Cart'}</span>
+              {totalCartCount > 0 && (
+                <span className="w-4 h-4 bg-purple-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
+                  {totalCartCount}
+                </span>
+              )}
+            </button>
+
+            {/* Share Product Button */}
             <button
               onClick={handleShareProduct}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300/80 text-xs font-bold transition-all cursor-pointer shadow-2xs group"
-              title={isAr ? 'مشاركة رابط وتفاصيل المنتج (Web Share API)' : 'Share Product (Web Share API)'}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300/80 text-xs font-bold transition-all cursor-pointer shadow-2xs group"
+              title={isAr ? 'مشاركة رابط وتفاصيل المنتج (Web Share API)' : 'Share Product'}
             >
               <Share2 className="w-3.5 h-3.5 text-amber-800 group-hover:scale-110 transition-transform" />
-              <span>{isAr ? 'مشاركة المنتج' : 'Share'}</span>
+              <span className="hidden sm:inline">{isAr ? 'مشاركة' : 'Share'}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <button
               type="button"
               onClick={onBackToShop}
@@ -430,16 +448,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             >
               {isAr ? 'الرئيسية' : 'Home'}
             </button>
-            <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180 text-slate-400 shrink-0" />
+            <ChevronRight className="w-3 h-3 rtl:rotate-180 text-slate-400 shrink-0" />
             <button
               type="button"
               onClick={onBackToShop}
-              className="text-amber-900 font-bold hover:underline cursor-pointer"
+              className="text-amber-900 font-bold hover:underline cursor-pointer truncate max-w-[90px] sm:max-w-none"
             >
               {isAr ? product.categoryLabelAr : product.categoryLabelEn}
             </button>
-            <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180 text-slate-400 shrink-0" />
-            <span className="text-slate-800 font-bold truncate max-w-[160px] sm:max-w-[260px]">
+            <ChevronRight className="w-3 h-3 rtl:rotate-180 text-slate-400 shrink-0" />
+            <span className="text-slate-800 font-bold truncate max-w-[110px] sm:max-w-[220px]">
               {isAr ? product.titleAr : product.titleEn}
             </span>
           </div>

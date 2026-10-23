@@ -25,31 +25,13 @@ import {
   MapPin,
   ExternalLink,
   Gift,
+  Globe,
 } from 'lucide-react';
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { useCartStore, OrderRecord } from '../../store/useCartStore';
 import { ProductItem, DimensionOption, LedOption } from '../../data/mockData';
 
-const IRAQ_GOVERNORATES = [
-  'بغداد',
-  'البصرة',
-  'أربيل',
-  'النجف الأشرف',
-  'كربلاء المقدسة',
-  'بابل / الحلة',
-  'السليمانية',
-  'دهوك',
-  'كركوك',
-  'نينوى / الموصل',
-  'ذي قار / الناصرية',
-  'ديالى / بعقوبة',
-  'الأنبار / الرمادي',
-  'واسط / الكوت',
-  'صلاح الدين / تكريت',
-  'ميسان / العمارة',
-  'القادسية / الديوانية',
-  'المثنى / السماوة',
-];
+import { SUPPORTED_COUNTRIES, getCountryByName, CountryInfo } from '../../data/geoData';
 
 interface DynamicLandingPageProps {
   onBackToHome?: () => void;
@@ -65,7 +47,7 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
 
-  const { campaign, adminProducts, recordCampaignVisit, recordCampaignOrder } = useAdminStore();
+  const { campaign, adminProducts, recordCampaignVisit, recordCampaignOrder, recordABVisit, recordABOrder } = useAdminStore();
   const { setLastOrder } = useCartStore();
 
   // Unified Product Resolution
@@ -74,6 +56,25 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
   const product: ProductItem = useMemo(() => {
     return allProducts.find((p) => p.id === targetProductId) || allProducts[0];
   }, [allProducts, targetProductId]);
+
+  // Dynamic A/B Variant Resolution (Supports utm_content=var_a / var_b, activeWinnerId, and traffic split)
+  const activeVariant = useMemo(() => {
+    if (!campaign.abTest || !campaign.abTest.enabled) return null;
+    if (typeof window === 'undefined') return campaign.abTest.variantA;
+    const params = new URLSearchParams(window.location.search);
+    const content = (params.get('utm_content') || params.get('variant') || params.get('ab') || '').toLowerCase();
+    if (content.includes('var_b') || content.includes('b')) {
+      return campaign.abTest.variantB;
+    }
+    if (content.includes('var_a') || content.includes('a')) {
+      return campaign.abTest.variantA;
+    }
+    if (campaign.abTest.activeWinnerId === 'var_b') return campaign.abTest.variantB;
+    if (campaign.abTest.activeWinnerId === 'var_a') return campaign.abTest.variantA;
+    const splitA = campaign.abTest.trafficSplitPercentA || 50;
+    const rand = Math.random() * 100;
+    return rand <= splitA ? campaign.abTest.variantA : campaign.abTest.variantB;
+  }, [campaign.abTest]);
 
   // Gallery Photos
   const galleryPhotos = useMemo(() => {
@@ -112,15 +113,21 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
     if (src.includes('google')) {
       return { id: 'google', nameAr: 'إعلانات جوجل (Google)', nameEn: 'Google', tag: 'GGL', badgeBg: 'bg-red-600 text-white' };
     }
+    if (src.includes('direct') || src.includes('whatsapp') || src.includes('wa') || src.includes('telegram')) {
+      return { id: 'direct', nameAr: 'واتساب وتيليجرام (Direct)', nameEn: 'Direct / WhatsApp', tag: 'DIR', badgeBg: 'bg-emerald-600 text-white' };
+    }
     return { id: 'social', nameAr: 'شبكات التواصل', nameEn: 'Social Media', tag: 'PROMO', badgeBg: 'bg-amber-600 text-stone-950' };
   }, []);
 
-  // Record visit with platform attribution once on mount
+  // Record visit with platform and A/B variant attribution once on mount
   useEffect(() => {
     if (!isPreview) {
       recordCampaignVisit(platformInfo.id);
+      if (activeVariant) {
+        recordABVisit(activeVariant.id);
+      }
     }
-  }, [isPreview, recordCampaignVisit, platformInfo.id]);
+  }, [isPreview, recordCampaignVisit, platformInfo.id, activeVariant, recordABVisit]);
 
   // Live Countdown Timer (Simulated to end in campaign.countdownHours)
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
@@ -145,10 +152,29 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Form State
+  // Form State with Country & City Cascading Selection (تخصيص الدولة ثم المدينة)
+  const defaultCountry = useMemo(() => {
+    return getCountryByName(campaign.targetCountry || 'العراق');
+  }, [campaign.targetCountry]);
+
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(defaultCountry.code);
+  const currentCountry: CountryInfo = useMemo(() => {
+    return SUPPORTED_COUNTRIES.find((c) => c.code === selectedCountryCode) || defaultCountry;
+  }, [selectedCountryCode, defaultCountry]);
+
+  const [city, setCity] = useState<string>(
+    campaign.targetCity && currentCountry.cities.includes(campaign.targetCity)
+      ? campaign.targetCity
+      : currentCountry.cities[0]
+  );
+
+  // Automatically sync city when country changes
+  useEffect(() => {
+    setCity(currentCountry.cities[0]);
+  }, [selectedCountryCode, currentCountry]);
+
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [governorate, setGovernorate] = useState(IRAQ_GOVERNORATES[0]);
   const [addressDetails, setAddressDetails] = useState('');
   const [customText, setCustomText] = useState('');
   const [selectedDimension, setSelectedDimension] = useState<DimensionOption>(
@@ -190,8 +216,14 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
     }
   };
 
-  // Pricing Calculation
-  const basePromoPrice = campaign.promoPriceIQD;
+  // Pricing Calculation (Dynamic for any product in catalog or default campaign product, respecting active A/B variant)
+  const isDefaultCampaignProduct = product.id === campaign.productId;
+  const basePromoPrice = isDefaultCampaignProduct
+    ? (activeVariant ? activeVariant.promoPriceIQD : campaign.promoPriceIQD)
+    : Math.round(product.basePrice * (1 - (product.tierPricing?.[0]?.discountPercent || 25) / 100));
+  const effectiveOriginalPrice = isDefaultCampaignProduct
+    ? (activeVariant ? activeVariant.originalPriceIQD : campaign.originalPriceIQD)
+    : product.basePrice;
   const dimensionMultiplier = selectedDimension.multiplier || 1;
   const calculatedProductPrice = Math.round(basePromoPrice * dimensionMultiplier);
   const bonusAddPrice = includeBonusOffer && campaign.bonusOfferEnabled ? campaign.bonusOfferPriceIQD : 0;
@@ -273,7 +305,8 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
       shipping: {
         fullName: customerName,
         phone: customerPhone,
-        governorate,
+        country: currentCountry.nameAr,
+        governorate: `${currentCountry.nameAr} - ${city}`,
         address: addressDetails,
         notes: customerNotes || undefined,
         deliveryType: 'standard',
@@ -290,7 +323,7 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
       shippingCost: 0,
       grandTotal: grandTotalIQD,
       manufacturingStatus: 'under_review',
-      workshopNotes: `طلب مباشر من إعلان (${platformInfo.nameAr} - ${campaign.slug}). العميل طلب معاينة التصميم قبل التنفيذ.`,
+      workshopNotes: `طلب مباشر من إعلان (${platformInfo.nameAr} - ${campaign.slug}) - ${currentCountry.nameAr} / ${city}. العميل طلب معاينة التصميم قبل التنفيذ.`,
     };
 
     setTimeout(() => {
@@ -298,6 +331,9 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
       setOrderCompleted(newOrder);
       setLastOrder(newOrder);
       recordCampaignOrder(grandTotalIQD, platformInfo.id);
+      if (activeVariant) {
+        recordABOrder(activeVariant.id, grandTotalIQD);
+      }
       toast.success(isAr ? 'تم استلام طلبك بنجاح! شكراً لثقتكم بنون والقلم' : 'Order received successfully!');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 600);
@@ -311,15 +347,15 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
         `📦 رقم الطلب: ${orderCompleted.orderId}\n` +
         `👤 الاسم: ${customerName}\n` +
         `📞 الهاتف: ${customerPhone}\n` +
-        `📍 المحافظة: ${governorate} - ${addressDetails}\n` +
+        `📍 الدولة والمدينة: ${currentCountry.flag} ${currentCountry.nameAr} - ${city} (${addressDetails})\n` +
         `💎 المنتج: ${product.titleAr}\n` +
         (customText ? `✍️ النص المطلوب: ${customText}\n` : '') +
         `💰 المبلغ المطلوب عند الاستلام: ${grandTotalIQD.toLocaleString()} د.ع (شحن مجاني)\n` +
         `أرجو تزويدي بالبروفة الرقمية لاعتمادها. شكراً لكم!`
-      : `Hello Noon & Al-Qalam, I placed an order via ${platformInfo.nameEn} special offer:\nOrder: ${orderCompleted.orderId}\nName: ${customerName}\nProduct: ${product.titleEn}\nTotal COD: ${grandTotalIQD.toLocaleString()} IQD`;
+      : `Hello Noon & Al-Qalam, I placed an order via ${platformInfo.nameEn} special offer:\nOrder: ${orderCompleted.orderId}\nName: ${customerName}\nCountry/City: ${currentCountry.nameEn} - ${city}\nProduct: ${product.titleEn}\nTotal COD: ${grandTotalIQD.toLocaleString()} IQD`;
 
     return `https://wa.me/9647800000000?text=${encodeURIComponent(text)}`;
-  }, [orderCompleted, customerName, customerPhone, governorate, addressDetails, product, customText, grandTotalIQD, isAr, platformInfo]);
+  }, [orderCompleted, customerName, customerPhone, currentCountry, city, addressDetails, product, customText, grandTotalIQD, isAr, platformInfo]);
 
   return (
     <div className="min-h-screen bg-stone-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-black">
@@ -348,8 +384,8 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
             <Flame className="w-4 h-4 text-slate-950 animate-bounce" />
             <span>
               {isAr
-                ? `عرض خاص لعملاء ${platformInfo.nameAr} لفترة محدودة | شحن مجاني لكافة محافظات العراق 🇮🇶`
-                : `Special Deal for ${platformInfo.nameEn} Users | Free Shipping Across Iraq`}
+                ? `عرض خاص لعملاء ${platformInfo.nameAr} في ${currentCountry.nameAr} ${currentCountry.flag} لفترة محدودة | شحن مجاني لكافة المدن والمحافظات ⚡`
+                : `Special Deal for ${platformInfo.nameEn} Users in ${currentCountry.nameEn} ${currentCountry.flag} | Free Delivery`}
             </span>
           </div>
           <div className="flex items-center gap-1.5 font-mono text-[11px] bg-slate-950 text-amber-300 px-2.5 py-1 rounded-lg border border-amber-400/40 shadow-xs">
@@ -380,14 +416,26 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={scrollToForm}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs transition-all shadow-md cursor-pointer hover:shadow-amber-500/20"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>{isAr ? 'اطلب الآن ⚡' : 'Order Now ⚡'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {onBackToHome && (
+              <button
+                type="button"
+                onClick={onBackToHome}
+                className="px-3 py-1.5 rounded-xl border border-stone-800 hover:border-amber-500/50 text-stone-300 hover:text-amber-300 text-xs font-bold transition-all cursor-pointer hidden sm:inline-flex items-center gap-1.5"
+              >
+                <span>{isAr ? 'تصفح المتجر الكامل' : 'Browse Storefront'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={scrollToForm}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs transition-all shadow-md cursor-pointer hover:shadow-amber-500/20"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>{isAr ? 'اطلب الآن ⚡' : 'Order Now ⚡'}</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -428,8 +476,8 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
                 <span className="font-bold text-white">{product.titleAr}</span>
               </div>
               <div className="flex items-center justify-between text-stone-300">
-                <span>المحافظة والتوصيل:</span>
-                <span className="font-medium text-stone-200">{governorate} ({addressDetails})</span>
+                <span>الدولة والمدينة والتوصيل:</span>
+                <span className="font-medium text-stone-200">{currentCountry.flag} {currentCountry.nameAr} - {city} ({addressDetails})</span>
               </div>
               <div className="flex items-center justify-between text-stone-300">
                 <span>طريقة الدفع:</span>
@@ -480,17 +528,22 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
                   <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                   <span>
                     {isAr
-                      ? `${campaign.badgeTextAr} · خاص لعملاء ${platformInfo.nameAr}`
-                      : `${campaign.badgeTextEn} · Exclusive for ${platformInfo.nameEn}`}
+                      ? `${activeVariant?.badgeTextAr || campaign.badgeTextAr} · خاص لعملاء ${platformInfo.nameAr}`
+                      : `${activeVariant?.badgeTextAr || campaign.badgeTextEn} · Exclusive for ${platformInfo.nameEn}`}
                   </span>
+                  {activeVariant && (
+                    <span className="text-[10px] bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded font-mono border border-amber-500/30">
+                      {activeVariant.id === 'var_a' ? 'A' : 'B'}
+                    </span>
+                  )}
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight">
-                  {isAr ? campaign.headlineAr : campaign.headlineEn}
+                  {activeVariant?.headlineAr || (isAr ? campaign.headlineAr : campaign.headlineEn)}
                 </h1>
 
                 <p className="text-xs sm:text-sm md:text-base text-stone-300 max-w-2xl mx-auto leading-relaxed">
-                  {isAr ? campaign.subheadlineAr : campaign.subheadlineEn}
+                  {activeVariant?.subheadlineAr || (isAr ? campaign.subheadlineAr : campaign.subheadlineEn)}
                 </p>
 
                 {/* Social Proof Star Ratings & Live Viewers */}
@@ -563,11 +616,11 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
                       {calculatedProductPrice.toLocaleString()} د.ع
                     </span>
                     <span className="text-sm sm:text-base text-stone-500 line-through font-mono">
-                      {campaign.originalPriceIQD.toLocaleString()} د.ع
+                      {effectiveOriginalPrice.toLocaleString()} د.ع
                     </span>
                   </div>
                   <span className="text-xs font-bold text-emerald-400 block mt-0.5">
-                    ✨ وفّرت اليوم {(campaign.originalPriceIQD - calculatedProductPrice).toLocaleString()} د.ع مع توصيل مجاني!
+                    ✨ وفّرت اليوم {(effectiveOriginalPrice - calculatedProductPrice).toLocaleString()} د.ع مع توصيل مجاني!
                   </span>
                 </div>
 
@@ -589,7 +642,7 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(isAr ? campaign.bulletPointsAr : campaign.bulletPointsEn).map((point, idx) => (
+                  {(activeVariant ? activeVariant.bulletPointsAr : (isAr ? campaign.bulletPointsAr : campaign.bulletPointsEn)).map((point, idx) => (
                     <div key={idx} className="flex items-start gap-2.5 p-3 rounded-2xl bg-stone-950/70 border border-stone-800/80 text-xs">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                       <span className="text-stone-200 font-medium leading-relaxed">{point}</span>
@@ -751,56 +804,82 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-stone-300 flex items-center gap-1">
                           <Phone className="w-3 h-3 text-amber-400" />
-                          <span>{isAr ? 'رقم الهاتف والواتساب:' : 'Phone & WhatsApp:'}</span>
+                          <span>{isAr ? 'رقم الهاتف والواتساب للتوصيل:' : 'Phone & WhatsApp:'}</span>
                           <span className="text-red-400">*</span>
                         </label>
-                        <input
-                          type="tel"
-                          required
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          placeholder={isAr ? '0780xxxxxxx أو 0770xxxxxxx' : '0780xxxxxxx'}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-medium text-white focus:outline-none focus:border-amber-500 font-mono"
-                        />
+                        <div className="relative flex items-center">
+                          <span className="absolute start-3 text-xs font-mono font-bold text-amber-400 select-none">
+                            {currentCountry.phoneCode}
+                          </span>
+                          <input
+                            type="tel"
+                            required
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            placeholder={currentCountry.phonePlaceholder}
+                            className="w-full ps-16 pe-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-medium text-white focus:outline-none focus:border-amber-500 font-mono"
+                          />
+                        </div>
                       </div>
                     </div>
 
+                    {/* Country THEN City Cascading Selector (تخصيص الدولة ثم المدينة) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Governorate */}
+                      {/* Country Selector */}
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-stone-300 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-amber-400" />
-                          <span>{isAr ? 'المحافظة:' : 'Governorate:'}</span>
+                          <Globe className="w-3 h-3 text-amber-400" />
+                          <span>{isAr ? 'الدولة المستهدفة:' : 'Target Country:'}</span>
                           <span className="text-red-400">*</span>
                         </label>
                         <select
-                          value={governorate}
-                          onChange={(e) => setGovernorate(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-bold text-white focus:outline-none focus:border-amber-500"
+                          value={selectedCountryCode}
+                          onChange={(e) => setSelectedCountryCode(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-bold text-white focus:outline-none focus:border-amber-500 cursor-pointer"
                         >
-                          {IRAQ_GOVERNORATES.map((gov) => (
-                            <option key={gov} value={gov} className="bg-stone-900 text-white">
-                              {gov}
+                          {SUPPORTED_COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code} className="bg-stone-900 text-white">
+                              {c.flag} {c.nameAr}
                             </option>
                           ))}
                         </select>
                       </div>
 
-                      {/* Detailed Address */}
+                      {/* City Selector */}
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-stone-300 flex items-center gap-1">
-                          <span>{isAr ? 'العنوان وأقرب نقطة دالة:' : 'Detailed Address & Landmark:'}</span>
+                          <MapPin className="w-3 h-3 text-amber-400" />
+                          <span>{isAr ? `المدينة / المحافظة في (${currentCountry.nameAr}):` : 'City / Governorate:'}</span>
                           <span className="text-red-400">*</span>
                         </label>
-                        <input
-                          type="text"
-                          required
-                          value={addressDetails}
-                          onChange={(e) => setAddressDetails(e.target.value)}
-                          placeholder={isAr ? 'المنطقة، الشارع، قرب مركز صحي أو مدرسة...' : 'District, street, landmark...'}
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-medium text-white focus:outline-none focus:border-amber-500"
-                        />
+                        <select
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-bold text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          {currentCountry.cities.map((ct) => (
+                            <option key={ct} value={ct} className="bg-stone-900 text-white">
+                              {ct}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+                    </div>
+
+                    {/* Detailed Address */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-300 flex items-center gap-1">
+                        <span>{isAr ? 'العنوان وأقرب نقطة دالة:' : 'Detailed Address & Landmark:'}</span>
+                        <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={addressDetails}
+                        onChange={(e) => setAddressDetails(e.target.value)}
+                        placeholder={isAr ? 'الحي، الشارع، قرب مركز صحي، مدرسة، أو معلم بارز...' : 'District, street, landmark...'}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-xs font-medium text-white focus:outline-none focus:border-amber-500"
+                      />
                     </div>
                   </div>
 
@@ -892,7 +971,9 @@ export const DynamicLandingPage: React.FC<DynamicLandingPageProps> = ({
 
               {/* 6. FAQ & TRUST GUARANTEE (الأسئلة الشائعة والضمان) */}
               <div className="bg-stone-900/60 rounded-3xl p-5 border border-stone-800 space-y-3 text-xs">
-                <h4 className="font-bold text-white text-sm mb-2">أسئلة شائعة يطرحها عملاء إعلانات تيك توك:</h4>
+                <h4 className="font-bold text-white text-sm mb-2">
+                  {isAr ? `أسئلة شائعة يطرحها عملاء إعلانات ${platformInfo.nameAr}:` : `Frequently Asked Questions by ${platformInfo.nameEn} Customers:`}
+                </h4>
                 <div className="space-y-2">
                   <div className="p-3 rounded-xl bg-stone-950/70 border border-stone-800/80">
                     <span className="font-bold text-amber-300 block mb-1">س: كيف أضمن صحة الاسم والشعار قبل التنفيذ؟</span>

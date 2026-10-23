@@ -57,6 +57,7 @@ export interface ShippingInfo {
   fullName: string;
   phone: string;
   governorate: string;
+  country?: string;
   address: string;
   notes?: string;
   deliveryType: 'standard' | 'express';

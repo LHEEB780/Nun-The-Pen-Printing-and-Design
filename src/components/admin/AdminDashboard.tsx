@@ -9,6 +9,7 @@ import { UserManagementTab } from './UserManagementTab';
 import { ContentManagementTab } from './ContentManagementTab';
 import { OffersManagementTab } from './OffersManagementTab';
 import { CampaignsManagementTab } from './CampaignsManagementTab';
+import { AICampaignOrchestrator } from './AICampaignOrchestrator';
 import {
   BarChart3,
   Sliders,
@@ -27,11 +28,14 @@ import {
   Unlock,
   Tag,
   Flame,
+  Bot,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export type AdminDashboardTab =
   | 'analytics'
+  | 'orchestrator'
   | 'campaigns'
   | 'offers'
   | 'form_builder'
@@ -43,7 +47,7 @@ export type AdminDashboardTab =
 interface AdminDashboardProps {
   onBackToStore: () => void;
   initialTab?: AdminDashboardTab;
-  onOpenLandingPreview?: () => void;
+  onOpenLandingPreview?: (productId?: string) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -73,17 +77,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: ['analytics', 'campaigns', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
-      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة صفحات هبوط تيك توك، إدارة عروض الموسم والتخفيضات، إدارة المحتوى، بناء النماذج، وتسعير المنتجات.',
-      descriptionEn: 'Full system privileges: Analytics, TikTok Landing Pages, Seasonal Deals, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
+      allowedTabs: ['analytics', 'orchestrator', 'campaigns', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
+      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، توجيه الحملات بالذكاء الاصطناعي، صفحات هبوط تيك توك، إدارة عروض الموسم، بناء النماذج، وتسعير المنتجات.',
+      descriptionEn: 'Full system privileges: Analytics, AI Campaign Orchestrator, TikTok Funnels, Seasonal Deals, Dynamic Forms, and Staff RBAC.',
     },
     sales_manager: {
       titleAr: 'مدير المبيعات (Sales Manager)',
       titleEn: 'Sales Manager',
       badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-      allowedTabs: ['analytics', 'campaigns', 'offers', 'orders'],
-      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، صفحات هبوط تيك توك والإعلانات، إدارة عروض وتخفيضات الموسم، فواتير الطلبات، وبوابات الدفع.',
-      descriptionEn: 'Sales permissions: Revenue charts, TikTok Funnels, promotional campaigns & seasonal offers, and customer orders tracking.',
+      allowedTabs: ['analytics', 'orchestrator', 'campaigns', 'offers', 'orders'],
+      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، توجيه الحملات الذكية، صفحات هبوط تيك توك، إدارة العروض، وفواتير الطلبات.',
+      descriptionEn: 'Sales permissions: Revenue charts, AI Campaign Orchestrator, TikTok Funnels, and orders tracking.',
     },
     inventory_manager: {
       titleAr: 'مدير المخزن والخامات (Inventory Manager)',
@@ -201,7 +205,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="text-xs text-purple-200 shrink-0 font-medium">
             <span>{isAr ? 'التبويبات المتاحة لك:' : 'Accessible tabs:'} </span>
             <span className="font-mono font-bold text-white">
-              {currentConfig.allowedTabs.length} / 8
+              {currentConfig.allowedTabs.length} / 9
             </span>
           </div>
         </div>
@@ -214,6 +218,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               labelAr: 'لوحة التحليلات والإيرادات',
               labelEn: 'Analytics & Revenue',
               icon: BarChart3,
+            },
+            {
+              id: 'orchestrator' as const,
+              labelAr: '⚡ موجّه الحملات بالذكاء الاصطناعي (AI Orchestrator)',
+              labelEn: '⚡ AI Campaign Orchestrator',
+              icon: Bot,
             },
             {
               id: 'campaigns' as const,
@@ -288,7 +298,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Tab Content Display */}
         <div className="pt-2">
           {activeTab === 'analytics' && <AnalyticsTab />}
-          {activeTab === 'campaigns' && <CampaignsManagementTab onOpenPreview={onOpenLandingPreview} />}
+          {activeTab === 'orchestrator' && (
+            <AICampaignOrchestrator
+              onOpenPreview={onOpenLandingPreview}
+              onNavigateToCampaigns={() => handleSelectTab('campaigns')}
+            />
+          )}
+          {activeTab === 'campaigns' && (
+            <CampaignsManagementTab
+              onOpenPreview={onOpenLandingPreview}
+              onNavigateToOrchestrator={() => handleSelectTab('orchestrator')}
+            />
+          )}
           {activeTab === 'offers' && <OffersManagementTab />}
           {activeTab === 'content' && <ContentManagementTab />}
           {activeTab === 'form_builder' && <FormBuilderTab />}

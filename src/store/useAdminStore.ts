@@ -47,6 +47,31 @@ export interface PlatformStatItem {
   revenue: number;
 }
 
+export interface ABVariantData {
+  id: 'var_a' | 'var_b';
+  nameAr: string;
+  nameEn: string;
+  angleAr: string;
+  angleEn: string;
+  headlineAr: string;
+  subheadlineAr: string;
+  badgeTextAr: string;
+  promoPriceIQD: number;
+  originalPriceIQD: number;
+  bulletPointsAr: string[];
+  viewsCount: number;
+  ordersCount: number;
+  totalRevenueIQD: number;
+}
+
+export interface ABCampaignTest {
+  enabled: boolean;
+  trafficSplitPercentA: number; // e.g. 50 (50% A, 50% B)
+  activeWinnerId?: 'var_a' | 'var_b' | null;
+  variantA: ABVariantData;
+  variantB: ABVariantData;
+}
+
 export interface LandingPageCampaign {
   id: string;
   isActive: boolean;
@@ -71,7 +96,10 @@ export interface LandingPageCampaign {
   viewsCount: number;
   ordersCount: number;
   totalRevenueIQD: number;
+  targetCountry?: string;
+  targetCity?: string;
   platformStats?: Record<string, PlatformStatItem>;
+  abTest?: ABCampaignTest;
 }
 
 interface AdminStore {
@@ -111,6 +139,15 @@ interface AdminStore {
   recordCampaignVisit: (source?: string) => void;
   recordCampaignOrder: (revenue: number, source?: string) => void;
   resetCampaignStats: () => void;
+
+  // A/B Testing Orchestrator State & Actions
+  updateABTest: (updated: Partial<ABCampaignTest>) => void;
+  updateABVariant: (variantId: 'var_a' | 'var_b', updated: Partial<ABVariantData>) => void;
+  recordABVisit: (variantId: 'var_a' | 'var_b') => void;
+  recordABOrder: (variantId: 'var_a' | 'var_b', revenue: number) => void;
+  simulateABTraffic: (sampleSize?: number) => void;
+  resetABTestStats: () => void;
+  deployABWinner: (winnerId: 'var_a' | 'var_b') => void;
 }
 
 const INITIAL_STAFF: StaffMember[] = [
@@ -427,11 +464,62 @@ const INITIAL_CAMPAIGN: LandingPageCampaign = {
   viewsCount: 168,
   ordersCount: 23,
   totalRevenueIQD: 874000,
+  targetCountry: 'العراق',
+  targetCity: 'كافة المحافظات',
   platformStats: {
     tiktok: { views: 76, orders: 11, revenue: 418000 },
     facebook: { views: 48, orders: 6, revenue: 228000 },
     instagram: { views: 32, orders: 4, revenue: 152000 },
     snapchat: { views: 12, orders: 2, revenue: 76000 },
+  },
+  abTest: {
+    enabled: true,
+    trafficSplitPercentA: 50,
+    activeWinnerId: null,
+    variantA: {
+      id: 'var_a',
+      nameAr: 'النسخة أ (الفخامة والتأثير العاطفي والإهداء)',
+      nameEn: 'Variant A (Prestige & Emotional Gift Appeal)',
+      angleAr: 'التركيز على الفخامة الملكية، البريستيج، تخليد الذكرى، والهدايا الاستثنائية للأشخاص المميزين.',
+      angleEn: 'Emotional prestige, executive gifting, and memorable moments.',
+      headlineAr: 'عرض حصري لمتابعي تيك توك: تحفة 3D LED ملكية محفورة باسمك وشعارك تدوم للأبد 🔥',
+      subheadlineAr: 'خلّد اسمك ومكانتك أو قدّم أرقى هدية تليق بأعز الناس مع بروفة رقمية مجانية وضمان معاينة عند الاستلام!',
+      badgeTextAr: 'خصم خاص 35% لنسخة النخبة ⚡',
+      promoPriceIQD: 38000,
+      originalPriceIQD: 58000,
+      bulletPointsAr: [
+        'أكريليك كاست نقي 100% شفاف معالج ضد الخدش والاصفرار',
+        'إضاءة LED تدوم أكثر من 50,000 ساعة مع قاعدة خشب طبيعي فاخرة',
+        'بروفة هندسية رقمية مجانية يجهزها المصمم وتعتمدها بنفسك قبل التنفيذ',
+        'الدفع نقدياً عند الاستلام مع إمكانية المعاينة الكاملة قبل الدفع',
+        'تغليف هدايا فاخر وشحن آمن لكافة المحافظات خلال 24 - 48 ساعة',
+      ],
+      viewsCount: 142,
+      ordersCount: 21,
+      totalRevenueIQD: 798000,
+    },
+    variantB: {
+      id: 'var_b',
+      nameAr: 'النسخة ب (الجودة الهندسية، الضمان الصارم، وتوفير التكلفة)',
+      nameEn: 'Variant B (Precision Engineering & Risk-Free Quality)',
+      angleAr: 'التركيز على الدقة الهندسية للقص الليزري (0.2 ملم)، وضوح القراءة، ضمان المعاينة قبل الدفع، وتوفير السعر.',
+      angleEn: 'Laser precision engineering, zero-risk inspection, and direct factory value.',
+      headlineAr: 'تصنيع هندسي فائق الدقة: لوحة أكريليك 3D LED بضمان استبدال مباشر ومعاينة مجانية 🛡️',
+      subheadlineAr: 'قص ليزري بؤري فائق الدقة (0.2 ملم) وتشطيب يدوي مقاوم للخدش - ادفع فقط بعد فحص المنتج بيدك!',
+      badgeTextAr: 'ضمان ذهبي 100% + شحن مجاني ⚡',
+      promoPriceIQD: 35000,
+      originalPriceIQD: 55000,
+      bulletPointsAr: [
+        'قص ليزري دقيق بدرجة 0.2 ملم يضمن حواف ناعمة كالحرير وتفاصيل حادة',
+        'ضمان ذهبي لاستبدال فوري مجاني في حال وجود أي ملاحظة تصنيعية',
+        'بروفة رقمية مباشرة عبر واتساب تعتمدها بنفسك بنسبة 100%',
+        'حق فحص ومعاينة الطرد بالكامل قبل تسليم المبلغ لمندوب التوصيل',
+        'سعر مصنع مباشر مع شحن سريع وتوصيل لباب بيتك أو مكتبك',
+      ],
+      viewsCount: 138,
+      ordersCount: 26,
+      totalRevenueIQD: 910000,
+    },
   },
 };
 
@@ -606,6 +694,169 @@ export const useAdminStore = create<AdminStore>()(
             },
           },
         }));
+      },
+
+      updateABTest: (updated) => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          return {
+            campaign: {
+              ...state.campaign,
+              abTest: {
+                ...current,
+                ...updated,
+              },
+            },
+          };
+        });
+      },
+
+      updateABVariant: (variantId, updated) => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          return {
+            campaign: {
+              ...state.campaign,
+              abTest: {
+                ...current,
+                variantA: variantId === 'var_a' ? { ...current.variantA, ...updated } : current.variantA,
+                variantB: variantId === 'var_b' ? { ...current.variantB, ...updated } : current.variantB,
+              },
+            },
+          };
+        });
+      },
+
+      recordABVisit: (variantId) => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          const isA = variantId === 'var_a';
+          return {
+            campaign: {
+              ...state.campaign,
+              abTest: {
+                ...current,
+                variantA: isA ? { ...current.variantA, viewsCount: current.variantA.viewsCount + 1 } : current.variantA,
+                variantB: !isA ? { ...current.variantB, viewsCount: current.variantB.viewsCount + 1 } : current.variantB,
+              },
+            },
+          };
+        });
+      },
+
+      recordABOrder: (variantId, revenue) => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          const isA = variantId === 'var_a';
+          return {
+            campaign: {
+              ...state.campaign,
+              abTest: {
+                ...current,
+                variantA: isA
+                  ? {
+                      ...current.variantA,
+                      ordersCount: current.variantA.ordersCount + 1,
+                      totalRevenueIQD: current.variantA.totalRevenueIQD + revenue,
+                    }
+                  : current.variantA,
+                variantB: !isA
+                  ? {
+                      ...current.variantB,
+                      ordersCount: current.variantB.ordersCount + 1,
+                      totalRevenueIQD: current.variantB.totalRevenueIQD + revenue,
+                    }
+                  : current.variantB,
+              },
+            },
+          };
+        });
+      },
+
+      simulateABTraffic: (sampleSize = 250) => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          const splitA = (current.trafficSplitPercentA || 50) / 100;
+          const visitsA = Math.round(sampleSize * splitA);
+          const visitsB = sampleSize - visitsA;
+
+          // Realistic conversion simulation: ~14.5% for A and ~19.2% for B (+32% uplift)
+          const newOrdersA = Math.round(visitsA * (0.13 + Math.random() * 0.03));
+          const newOrdersB = Math.round(visitsB * (0.18 + Math.random() * 0.03));
+          const revA = newOrdersA * current.variantA.promoPriceIQD;
+          const revB = newOrdersB * current.variantB.promoPriceIQD;
+
+          return {
+            campaign: {
+              ...state.campaign,
+              abTest: {
+                ...current,
+                variantA: {
+                  ...current.variantA,
+                  viewsCount: current.variantA.viewsCount + visitsA,
+                  ordersCount: current.variantA.ordersCount + newOrdersA,
+                  totalRevenueIQD: current.variantA.totalRevenueIQD + revA,
+                },
+                variantB: {
+                  ...current.variantB,
+                  viewsCount: current.variantB.viewsCount + visitsB,
+                  ordersCount: current.variantB.ordersCount + newOrdersB,
+                  totalRevenueIQD: current.variantB.totalRevenueIQD + revB,
+                },
+              },
+            },
+          };
+        });
+      },
+
+      resetABTestStats: () => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          return {
+            campaign: {
+              ...state.campaign,
+              abTest: {
+                ...current,
+                activeWinnerId: null,
+                variantA: {
+                  ...current.variantA,
+                  viewsCount: 0,
+                  ordersCount: 0,
+                  totalRevenueIQD: 0,
+                },
+                variantB: {
+                  ...current.variantB,
+                  viewsCount: 0,
+                  ordersCount: 0,
+                  totalRevenueIQD: 0,
+                },
+              },
+            },
+          };
+        });
+      },
+
+      deployABWinner: (winnerId) => {
+        set((state) => {
+          const current = state.campaign.abTest || INITIAL_CAMPAIGN.abTest!;
+          const targetVariant = winnerId === 'var_a' ? current.variantA : current.variantB;
+
+          return {
+            campaign: {
+              ...state.campaign,
+              headlineAr: targetVariant.headlineAr,
+              subheadlineAr: targetVariant.subheadlineAr,
+              badgeTextAr: targetVariant.badgeTextAr,
+              promoPriceIQD: targetVariant.promoPriceIQD,
+              originalPriceIQD: targetVariant.originalPriceIQD,
+              bulletPointsAr: targetVariant.bulletPointsAr,
+              abTest: {
+                ...current,
+                activeWinnerId: winnerId,
+              },
+            },
+          };
+        });
       },
     }),
     {

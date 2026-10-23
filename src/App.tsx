@@ -55,6 +55,7 @@ export default function App() {
   const [adminInitialTab, setAdminInitialTab] = useState<AdminDashboardTab>('analytics');
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<SpecialtyId>('boxes');
   const [selectedProductId, setSelectedProductId] = useState<string>('prod-pizza-box');
+  const [landingPageProductId, setLandingPageProductId] = useState<string | undefined>(undefined);
   const [previousView, setPreviousView] = useState<'home' | 'shop' | 'specialty' | 'offers' | 'admin'>('specialty');
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [customizerInitialId, setCustomizerInitialId] = useState<string | undefined>(undefined);
@@ -64,14 +65,15 @@ export default function App() {
   const { lastOrder } = useCartStore();
   const { addOrderToHistory, isAuthenticated } = useAuthStore();
 
-  // Handle deep-linking from shared product URLs or TikTok campaign landing page on mount
+  // Handle deep-linking from shared product URLs or social ad campaign landing pages on mount
   React.useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      // Check for TikTok / social campaign funnel parameter
+      // Check for multi-platform ad campaign landing parameter (TikTok, Facebook, Instagram, etc.)
       if (params.get('landing') === 'true' || params.has('campaign') || params.has('lp') || params.has('tiktok')) {
         const campaignProd = params.get('prod') || params.get('productId');
         if (campaignProd) {
+          setLandingPageProductId(campaignProd);
           setSelectedProductId(campaignProd);
         }
         setCurrentView('landing');
@@ -158,8 +160,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Top Navigation - Hidden on landing page for pure distraction-free conversion */}
-      {currentView !== 'landing' && (
+      {/* Top Navigation - Hidden on landing page and product detail page for maximum screen space & distraction-free focus */}
+      {currentView !== 'landing' && currentView !== 'product' && (
         <Navbar
           currentView={currentView}
           onNavigate={handleNavigate}
@@ -175,7 +177,7 @@ export default function App() {
         {currentView === 'landing' && (
           <DynamicLandingPage
             onBackToHome={() => handleNavigate(previousView === 'admin' ? 'admin' : 'home')}
-            overrideProductId={selectedProductId}
+            overrideProductId={landingPageProductId}
             isPreview={previousView === 'admin'}
           />
         )}
@@ -271,8 +273,9 @@ export default function App() {
           <AdminDashboard
             onBackToStore={() => handleNavigate('shop')}
             initialTab={adminInitialTab}
-            onOpenLandingPreview={() => {
+            onOpenLandingPreview={(prodId?: string) => {
               setPreviousView('admin');
+              setLandingPageProductId(prodId);
               setCurrentView('landing');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
