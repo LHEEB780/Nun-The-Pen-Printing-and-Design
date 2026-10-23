@@ -5,6 +5,7 @@ import { useCartStore, PaymentMethod, ShippingInfo, OrderRecord } from '../../st
 import { useAuthStore } from '../../store/useAuthStore';
 import { useOffersStore } from '../../store/useOffersStore';
 import { useAdminStore } from '../../store/useAdminStore';
+import { useShippingStore } from '../../store/useShippingStore';
 import {
   ArrowRight,
   ArrowLeft,
@@ -24,6 +25,9 @@ import {
   Phone,
   User,
   Tag,
+  Globe2,
+  Plane,
+  Clock,
 } from 'lucide-react';
 
 interface CheckoutPageProps {
@@ -53,6 +57,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [governorate, setGovernorate] = useState(user?.governorate || 'بغداد - الكرخ');
   const [address, setAddress] = useState(user?.address || '');
   const [deliveryType, setDeliveryType] = useState<'standard' | 'express'>('standard');
+  const [destination, setDestination] = useState<'iraq' | 'international'>('iraq');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
 
   // Promo code redemption (validated against active, non-expired seasonal offers)
@@ -127,15 +133,27 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     { id: 'duhok', nameAr: 'دهوك', nameEn: 'Duhok', isBaghdad: false },
   ];
 
+  // International couriers (admin-managed; only ACTIVE ones are bookable)
+  const allCouriers = useShippingStore((s) => s.companies);
+  const activeCouriers = useMemo(() => allCouriers.filter((c) => c.isActive), [allCouriers]);
+  const selectedCourier = useMemo(
+    () => activeCouriers.find((c) => c.id === selectedCompanyId) ?? null,
+    [activeCouriers, selectedCompanyId]
+  );
+
   // Calculate Shipping fee
   const shippingCost = useMemo(() => {
+    // International: fee equals the selected courier's base fee
+    if (destination === 'international') {
+      return selectedCourier ? selectedCourier.baseFeeIQD : 0;
+    }
     const isBaghdad = governorate.includes('بغداد') || governorate.toLowerCase().includes('baghdad');
     // Express delivery always carries its flat premium fee
     if (deliveryType === 'express') return 10000;
     // Free standard shipping threshold for large custom orders
     if (subtotal >= 150000) return 0;
     return isBaghdad ? 5000 : 8000;
-  }, [governorate, deliveryType, subtotal]);
+  }, [destination, selectedCourier, governorate, deliveryType, subtotal]);
 
   const grandTotal = Math.max(0, subtotal - promoDiscountIQD + shippingCost);
 
@@ -224,6 +242,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             notes,
             deliveryType,
             shippingCost,
+            destination,
+            shippingCompanyNameAr:
+              destination === 'international' && selectedCourier ? selectedCourier.nameAr : undefined,
+            shippingCompanyNameEn:
+              destination === 'international' && selectedCourier ? selectedCourier.nameEn : undefined,
+            shippingEtaDays:
+              destination === 'international' && selectedCourier
+                ? `${selectedCourier.minDays}-${selectedCourier.maxDays}`
+                : undefined,
           },
           paymentMethod: selectedGateway,
           paymentDetails: {
@@ -338,8 +365,42 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <span>{isAr ? 'الخطوة الأولى: تفاصيل التوصيل والاستلام' : 'Step 1: Shipping & Delivery Info'}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
-                {isAr ? 'عنوان الاستلام في بغداد أو المحافظات' : 'Delivery Address & Contact'}
+                {destination === 'international'
+                  ? isAr
+                    ? 'بيانات الشحن الدولي خارج العراق'
+                    : 'International Shipping Details'
+                  : isAr
+                    ? 'عنوان الاستلام في بغداد أو المحافظات'
+                    : 'Delivery Address & Contact'}
               </h2>
+            </div>
+
+            {/* Shipping Destination Toggle: Iraq vs International */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setDestination('iraq')}
+                className={`flex items-center justify-center gap-2 p-3.5 rounded-2xl border text-sm font-bold transition-all cursor-pointer ${
+                  destination === 'iraq'
+                    ? 'border-purple-600 bg-purple-50 text-purple-900 ring-1 ring-purple-600 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'
+                }`}
+              >
+                <Truck className="w-4.5 h-4.5" />
+                {isAr ? 'التوصيل داخل العراق' : 'Deliver inside Iraq'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDestination('international')}
+                className={`flex items-center justify-center gap-2 p-3.5 rounded-2xl border text-sm font-bold transition-all cursor-pointer ${
+                  destination === 'international'
+                    ? 'border-purple-600 bg-purple-50 text-purple-900 ring-1 ring-purple-600 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'
+                }`}
+              >
+                <Globe2 className="w-4.5 h-4.5" />
+                {isAr ? 'شحن دولي خارج العراق' : 'International Shipping'}
+              </button>
             </div>
 
             <form
@@ -349,7 +410,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   toast.error(isAr ? 'يرجى تعبئة جميع الحقول الإلزامية (*)' : 'Please fill all required fields (*)');
                   return;
                 }
-                if (!isValidIraqiPhone(phone)) {
+                if (destination === 'international' && !selectedCourier) {
+                  toast.error(
+                    isAr
+                      ? 'اختر شركة الشحن الدولي للمتابعة'
+                      : 'Select an international courier to continue'
+                  );
+                  return;
+                }
+                if (destination === 'international' && phone.trim().replace(/[^0-9]/g, '').length < 7) {
+                  toast.error(
+                    isAr
+                      ? 'أدخل رقم هاتف دولي صحيح مع رمز الدولة (مثل +964...)'
+                      : 'Enter a valid international phone number with country code (e.g. +964...)'
+                  );
+                  return;
+                }
+                if (destination === 'iraq' && !isValidIraqiPhone(phone)) {
                   toast.error(
                     isAr
                       ? 'رقم الهاتف غير صحيح — أدخل رقم عراقي صالح مثل 07801234567 أو +9647801234567'
@@ -400,60 +477,133 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
-                    {isAr ? 'المحافظة / المدينة *' : 'Governorate / City *'}
-                  </label>
-                  <select
-                    value={governorate}
-                    onChange={(e) => setGovernorate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    {governorates.map((gov) => (
-                      <option key={gov.id} value={gov.nameAr}>
-                        {isAr ? gov.nameAr : gov.nameEn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {destination === 'iraq' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
+                      {isAr ? 'المحافظة / المدينة *' : 'Governorate / City *'}
+                    </label>
+                    <select
+                      value={governorate}
+                      onChange={(e) => setGovernorate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      {governorates.map((gov) => (
+                        <option key={gov.id} value={gov.nameAr}>
+                          {isAr ? gov.nameAr : gov.nameEn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
-                    {isAr ? 'نوع وسرعة الشحن:' : 'Delivery Priority:'}
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryType('standard')}
-                      className={`p-2.5 rounded-xl border text-xs text-start transition-all cursor-pointer ${
-                        deliveryType === 'standard'
-                          ? 'border-purple-600 bg-purple-50 font-bold text-purple-900 ring-1 ring-purple-600'
-                          : 'border-slate-200 bg-white text-slate-700'
-                      }`}
-                    >
-                      <span className="block">{isAr ? 'شحن اعتيادي' : 'Standard'}</span>
-                      <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        {subtotal >= 150000 ? (isAr ? 'مجاناً' : 'FREE') : (isAr ? '5,000 - 8,000 د.ع' : '5k - 8k IQD')}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryType('express')}
-                      className={`p-2.5 rounded-xl border text-xs text-start transition-all cursor-pointer ${
-                        deliveryType === 'express'
-                          ? 'border-purple-600 bg-purple-50 font-bold text-purple-900 ring-1 ring-purple-600'
-                          : 'border-slate-200 bg-white text-slate-700'
-                      }`}
-                    >
-                      <span className="block">{isAr ? 'شحن سريع مستعجل' : 'Express Rush'}</span>
-                      <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        10,000 {isAr ? 'د.ع' : 'IQD'}
-                      </span>
-                    </button>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
+                      {isAr ? 'نوع وسرعة الشحن:' : 'Delivery Priority:'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryType('standard')}
+                        className={`p-2.5 rounded-xl border text-xs text-start transition-all cursor-pointer ${
+                          deliveryType === 'standard'
+                            ? 'border-purple-600 bg-purple-50 font-bold text-purple-900 ring-1 ring-purple-600'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                      >
+                        <span className="block">{isAr ? 'شحن اعتيادي' : 'Standard'}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                          {subtotal >= 150000 ? (isAr ? 'مجاناً' : 'FREE') : (isAr ? '5,000 - 8,000 د.ع' : '5k - 8k IQD')}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryType('express')}
+                        className={`p-2.5 rounded-xl border text-xs text-start transition-all cursor-pointer ${
+                          deliveryType === 'express'
+                            ? 'border-purple-600 bg-purple-50 font-bold text-purple-900 ring-1 ring-purple-600'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                      >
+                        <span className="block">{isAr ? 'شحن سريع مستعجل' : 'Express Rush'}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                          10,000 {isAr ? 'د.ع' : 'IQD'}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
+                      {isAr ? 'الدولة والمدينة الوجهة *' : 'Destination Country & City *'}
+                    </label>
+                    <div className="relative">
+                      <Globe2 className="w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 start-3.5" />
+                      <input
+                        type="text"
+                        required
+                        value={governorate}
+                        onChange={(e) => setGovernorate(e.target.value)}
+                        placeholder={isAr ? 'مثال: الأردن — عمّان' : 'e.g. Jordan — Amman'}
+                        className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
+                      {isAr ? 'اختر شركة الشحن الدولي *' : 'Select International Courier *'}
+                    </label>
+                    {activeCouriers.length === 0 ? (
+                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-bold flex items-center gap-2">
+                        <Plane className="w-4 h-4 shrink-0" />
+                        {isAr
+                          ? 'لا توجد شركات شحن دولي مفعّلة حالياً — تفعيلها يتم من لوحة الإدارة أو تواصل معنا واتساب.'
+                          : 'No active international couriers right now — they are activated from the admin panel, or contact us on WhatsApp.'}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {activeCouriers.map((courier) => (
+                          <button
+                            key={courier.id}
+                            type="button"
+                            onClick={() => setSelectedCompanyId(courier.id)}
+                            className={`p-4 rounded-2xl border text-start transition-all cursor-pointer ${
+                              selectedCompanyId === courier.id
+                                ? 'border-purple-600 bg-purple-50 ring-1 ring-purple-600 shadow-sm'
+                                : 'border-slate-200 bg-white hover:border-purple-300'
+                            }`}
+                          >
+                            <span className="block text-sm font-extrabold text-slate-900">
+                              {isAr ? courier.nameAr : courier.nameEn}
+                            </span>
+                            {(isAr ? courier.coverageAr : courier.coverageEn) && (
+                              <span className="block text-[11px] text-slate-500 mt-0.5">
+                                {isAr ? courier.coverageAr : courier.coverageEn}
+                              </span>
+                            )}
+                            <span className="flex items-center justify-between mt-2">
+                              <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {courier.minDays}–{courier.maxDays} {isAr ? 'أيام' : 'days'}
+                              </span>
+                              <span className="text-xs font-extrabold text-purple-700">
+                                {courier.baseFeeIQD.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
+                              </span>
+                            </span>
+                            {(isAr ? courier.notesAr : courier.notesEn) && (
+                              <span className="block text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+                                {isAr ? courier.notesAr : courier.notesEn}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
@@ -626,12 +776,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               )}
               <div className="flex items-center justify-between">
                 <span>
-                  {isAr ? 'أجور الشحن والتوصيل (' : 'Delivery Fee ('}
-                  {governorate}
-                  {'): '}
+                  {isAr
+                    ? destination === 'international'
+                      ? `أجور الشحن الدولي (${selectedCourier?.nameAr ?? governorate}):`
+                      : `أجور الشحن والتوصيل (${governorate}):`
+                    : destination === 'international'
+                      ? `International Shipping (${selectedCourier?.nameEn ?? governorate}):`
+                      : `Delivery Fee (${governorate}):`}
                 </span>
                 <span className="font-mono font-bold">
-                  {shippingCost === 0 ? (isAr ? 'مجاني (للطلبات +150 ألف)' : 'FREE') : `${shippingCost.toLocaleString()} ${isAr ? 'د.ع' : 'IQD'}`}
+                  {shippingCost === 0
+                    ? destination === 'iraq'
+                      ? isAr
+                        ? 'مجاني (للطلبات +150 ألف)'
+                        : 'FREE'
+                      : isAr
+                        ? '— اختر شركة الشحن أعلاه'
+                        : '— select a courier above'
+                    : `${shippingCost.toLocaleString()} ${isAr ? 'د.ع' : 'IQD'}`}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-sm font-extrabold text-slate-900">

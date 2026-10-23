@@ -9,12 +9,14 @@ import { UserManagementTab } from './UserManagementTab';
 import { ContentManagementTab } from './ContentManagementTab';
 import { OffersManagementTab } from './OffersManagementTab';
 import { CampaignsManagementTab } from './CampaignsManagementTab';
+import { ShippingManagementTab } from './ShippingManagementTab';
 import {
   BarChart3,
   Sliders,
   Package,
   ClipboardList,
   Users,
+  Truck,
   Shield,
   ArrowLeft,
   ArrowRight,
@@ -38,7 +40,8 @@ export type AdminDashboardTab =
   | 'products'
   | 'orders'
   | 'users'
-  | 'content';
+  | 'content'
+  | 'shipping';
 
 interface AdminDashboardProps {
   onBackToStore: () => void;
@@ -73,7 +76,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: ['analytics', 'campaigns', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
+      allowedTabs: ['analytics', 'campaigns', 'offers', 'form_builder', 'products', 'orders', 'users', 'content', 'shipping'],
       descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، إدارة صفحات هبوط تيك توك، إدارة عروض الموسم والتخفيضات، إدارة المحتوى، بناء النماذج، وتسعير المنتجات.',
       descriptionEn: 'Full system privileges: Analytics, TikTok Landing Pages, Seasonal Deals, CMS Articles, Form Builder, Products, Orders, and Staff RBAC.',
     },
@@ -81,7 +84,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'مدير المبيعات (Sales Manager)',
       titleEn: 'Sales Manager',
       badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-      allowedTabs: ['analytics', 'campaigns', 'offers', 'orders'],
+      allowedTabs: ['analytics', 'campaigns', 'offers', 'orders', 'shipping'],
       descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، صفحات هبوط تيك توك والإعلانات، إدارة عروض وتخفيضات الموسم، فواتير الطلبات، وبوابات الدفع.',
       descriptionEn: 'Sales permissions: Revenue charts, TikTok Funnels, promotional campaigns & seasonal offers, and customer orders tracking.',
     },
@@ -252,6 +255,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               icon: ClipboardList,
             },
             {
+              id: 'shipping' as const,
+              labelAr: 'شركات الشحن الدولي',
+              labelEn: 'International Couriers',
+              icon: Truck,
+            },
+            {
               id: 'users' as const,
               labelAr: 'إدارة الفريق والأدوار (RBAC)',
               labelEn: 'Staff & RBAC Management',
@@ -294,6 +303,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'form_builder' && <FormBuilderTab />}
           {activeTab === 'products' && <ProductManagementTab />}
           {activeTab === 'orders' && <OrderManagementTab />}
+          {activeTab === 'shipping' && <ShippingManagementTab />}
           {activeTab === 'users' && <UserManagementTab />}
         </div>
       </div>

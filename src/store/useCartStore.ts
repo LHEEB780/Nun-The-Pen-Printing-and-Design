@@ -61,6 +61,10 @@ export interface ShippingInfo {
   notes?: string;
   deliveryType: 'standard' | 'express';
   shippingCost: number;
+  destination?: 'iraq' | 'international';
+  shippingCompanyNameAr?: string;
+  shippingCompanyNameEn?: string;
+  shippingEtaDays?: string;
 }
 
 export type PaymentMethod = 'zaincash' | 'fib' | 'cod' | 'stripe' | 'paypal';
