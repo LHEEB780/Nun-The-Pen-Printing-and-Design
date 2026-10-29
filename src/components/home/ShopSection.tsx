@@ -4,6 +4,7 @@ import { PRODUCTS, ProductItem } from '../../data/mockData';
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { SlidersHorizontal, Sparkles, Layers, Ruler, Palette, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
 import { useContentStore } from '../../store/useContentStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
 
 interface ShopSectionProps {
   onOpenCustomizer: (productId: string) => void;
@@ -18,6 +19,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { formatPrice } = useCurrencyStore();
   const { setSelectedArticleId } = useContentStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
   const productsList = getUnifiedProducts(adminProducts);
@@ -136,10 +138,7 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
                       {isAr ? 'يبدأ السعر التقديري من' : 'Starting from'}
                     </span>
                     <span className="font-extrabold text-base text-slate-900 font-mono">
-                      {prod.basePrice.toLocaleString()}{' '}
-                      <span className="text-xs font-normal text-slate-600">
-                        {isAr ? 'د.ع' : 'IQD'}
-                      </span>
+                      {formatPrice(prod.basePrice, { isAr })}
                     </span>
                   </div>
 

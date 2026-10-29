@@ -62,6 +62,7 @@ export interface ShippingInfo {
   notes?: string;
   deliveryType: 'standard' | 'express';
   shippingCost: number;
+  partnerCode?: string;
 }
 
 export type PaymentMethod = 'zaincash' | 'fib' | 'cod' | 'stripe' | 'paypal';
@@ -109,6 +110,12 @@ export interface OrderRecord {
   workshopNotes?: string;
   source?: string;
   campaignSlug?: string;
+  partnerCode?: string;
+  partnerId?: string;
+  partnerName?: string;
+  partnerEmployeeId?: string;
+  commissionAmountIQD?: number;
+  pointsEarned?: number;
 }
 
 interface CartStore {

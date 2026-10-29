@@ -2,6 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { toast } from 'sonner';
 import {
   Search,
   Sparkles,
@@ -14,6 +17,7 @@ import {
   ArrowRight,
   ArrowLeft,
   ShoppingBag,
+  Heart,
 } from 'lucide-react';
 
 interface ShopPageProps {
@@ -27,8 +31,33 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { formatPrice, currency, exchangeRate } = useCurrencyStore();
+  const { wishlist, toggleWishlist, setIsWishlistOpen } = useAuthStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
   const productsList = useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
+
+  const handleToggleWishlist = (prod: ProductItem) => {
+    const isAdded = toggleWishlist(prod.id);
+    if (isAdded) {
+      toast.success(
+        isAr
+          ? `تمت إضافة «${prod.titleAr}» إلى قائمة رغباتك ❤️`
+          : `Added "${prod.titleEn}" to your wishlist ❤️`,
+        {
+          action: {
+            label: isAr ? 'فتح المفضلة' : 'View Favorites',
+            onClick: () => setIsWishlistOpen(true),
+          },
+        }
+      );
+    } else {
+      toast.info(
+        isAr
+          ? `تمت إزالة «${prod.titleAr}» من قائمة رغباتك`
+          : `Removed "${prod.titleEn}" from your wishlist`
+      );
+    }
+  };
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -97,8 +126,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Page Header */}
         <div className="text-center max-w-3xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 text-amber-800 text-xs font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
             <span>{isAr ? 'كتالوج المنتجات المصنعة حسب الطلب' : 'Bespoke Custom Printing Catalog'}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
@@ -126,7 +155,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                     ? 'ابحث عن لوحة أكريليك، علب كارتونية، كروت أعمال...'
                     : 'Search LED signs, boxes, business cards...'
                 }
-                className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
               />
             </div>
 
@@ -140,7 +169,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="py-2 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="py-2 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <option value="default">{isAr ? 'المقترح / الأحدث' : 'Featured'}</option>
                   <option value="price-asc">{isAr ? 'السعر: من الأقل للأعلى' : 'Price: Low to High'}</option>
@@ -159,7 +188,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 type="button"
                 className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedCategory === cat.id
-                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
+                    ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80'
                 }`}
               >
@@ -192,7 +221,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 setSearchQuery('');
                 setSelectedCategory('all');
               }}
-              className="mt-2 px-4 py-2 text-xs font-bold bg-purple-100 text-purple-700 rounded-xl hover:bg-purple-200 transition-colors cursor-pointer"
+              className="mt-2 px-4 py-2 text-xs font-bold bg-amber-100 text-amber-900 rounded-xl hover:bg-amber-200 transition-colors cursor-pointer"
             >
               {isAr ? 'إعادة ضبط الفلاتر' : 'Reset Filters'}
             </button>
@@ -206,7 +235,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               return (
                 <div
                   key={prod.id}
-                  className="group bg-white rounded-3xl border border-slate-200/80 hover:border-purple-300 hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
+                  className="group bg-white rounded-3xl border border-slate-200/80 hover:border-amber-400 hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
                 >
                   <div>
                     {/* Image with clickable link to Detail Page */}
@@ -223,6 +252,33 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                       <div className="absolute top-3 start-3 px-3 py-1 bg-white/95 backdrop-blur-xs text-slate-900 text-xs font-bold rounded-lg shadow-2xs">
                         {isAr ? prod.categoryLabelAr : prod.categoryLabelEn}
                       </div>
+
+                      {/* Wishlist Heart Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleWishlist(prod);
+                        }}
+                        className={`absolute top-3 end-3 w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md z-10 active:scale-90 ${
+                          wishlist.includes(prod.id)
+                            ? 'bg-rose-500 text-white shadow-rose-500/30'
+                            : 'bg-white/90 hover:bg-white text-slate-700 hover:text-rose-500'
+                        }`}
+                        title={
+                          wishlist.includes(prod.id)
+                            ? (isAr ? 'إزالة من قائمة الرغبات' : 'Remove from wishlist')
+                            : (isAr ? 'إضافة إلى قائمة الرغبات' : 'Add to wishlist')
+                        }
+                        aria-label={isAr ? 'قائمة الرغبات' : 'Wishlist'}
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition-transform ${
+                            wishlist.includes(prod.id) ? 'fill-current scale-110' : 'hover:scale-110'
+                          }`}
+                        />
+                      </button>
+
                       <div className="absolute bottom-3 end-3 px-2.5 py-1 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-medium rounded-lg flex items-center gap-1">
                         <Clock className="w-3 h-3 text-[#87CEEB]" />
                         <span>{isAr ? prod.leadTimeAr : prod.leadTimeEn}</span>
@@ -232,7 +288,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                     {/* Card Content */}
                     <div className="p-6 space-y-4">
                       <div onClick={() => onSelectProduct(prod.id)} className="cursor-pointer">
-                        <h3 className="font-extrabold text-lg text-slate-900 group-hover:text-purple-700 transition-colors leading-snug">
+                        <h3 className="font-extrabold text-lg text-slate-900 group-hover:text-amber-700 transition-colors leading-snug">
                           {isAr ? prod.titleAr : prod.titleEn}
                         </h3>
                         <p className="text-xs text-slate-600 mt-2 line-clamp-2 leading-relaxed">
@@ -243,7 +299,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                       {/* Quick Specs preview */}
                       <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
                         <div className="flex items-center gap-2">
-                          <Ruler className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                          <Ruler className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           <span>
                             {isAr ? 'المقاسات:' : 'Sizes:'}{' '}
                             {prod.dimensions
@@ -252,7 +308,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Layers className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                          <Layers className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           <span>
                             {isAr ? 'الخامات:' : 'Finishes:'} {prod.materials.length}{' '}
                             {isAr ? 'خيارات متاحة' : 'options available'}
@@ -271,15 +327,17 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                         </span>
                         <div className="flex items-baseline gap-1.5">
                           <span className="font-black text-lg text-slate-900 font-mono">
-                            ${baseUSD}
+                            {formatPrice(prod.basePrice, { isAr })}
                           </span>
                           <span className="text-xs font-normal text-slate-500 font-mono">
-                            ({prod.basePrice.toLocaleString()} {isAr ? 'د.ع' : 'IQD'})
+                            {currency === 'USD'
+                              ? `(${prod.basePrice.toLocaleString()} ${isAr ? 'د.ع' : 'IQD'})`
+                              : `($${(prod.basePrice / exchangeRate).toFixed(2)})`}
                           </span>
                         </div>
                       </div>
 
-                      <span className="text-xs text-purple-700 font-bold bg-purple-50 px-2 py-1 rounded-md">
+                      <span className="text-xs text-amber-800 font-bold bg-amber-50 border border-amber-200/60 px-2 py-1 rounded-md">
                         {isAr ? 'خصم حتى 50% للكميات' : 'Up to 50% off'}
                       </span>
                     </div>
@@ -288,9 +346,9 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                     <button
                       onClick={() => onSelectProduct(prod.id)}
                       type="button"
-                      className="w-full py-3 px-4 rounded-xl text-xs font-extrabold bg-gradient-to-r from-purple-700 via-purple-600 to-sky-600 hover:from-purple-800 hover:to-sky-700 text-white shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3 px-4 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 shadow-md shadow-amber-500/20 hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <ShoppingBag className="w-4 h-4" />
+                      <ShoppingBag className="w-4 h-4 text-slate-950" />
                       <span>{isAr ? 'تخصيص وشراء (Customize & Buy)' : 'Customize & Buy'}</span>
                     </button>
                   </div>

@@ -23,6 +23,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Reset transient feedback state whenever the modal opens or tab changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setErrorMessage('');
+      setSuccessMessage('');
+      setLoading(false);
+    }
+  }, [isOpen]);
+
   // Form Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +51,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setTimeout(() => {
           onClose();
           if (onLoginSuccess) onLoginSuccess();
-        }, 800);
+        }, 350);
       } else {
         setErrorMessage(res.error || (isAr ? 'فشل تسجيل الدخول' : 'Login failed'));
       }
@@ -74,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setTimeout(() => {
           onClose();
           if (onLoginSuccess) onLoginSuccess();
-        }, 900);
+        }, 350);
       } else {
         setErrorMessage(res.error || (isAr ? 'فشل إنشاء الحساب' : 'Registration failed'));
       }
@@ -107,6 +116,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleDemoLogin = async () => {
     setLoading(true);
+    setErrorMessage('');
     try {
       const res = await login('laheeb@noonwalqalam.com', 'demo1234');
       if (res.success) {
@@ -114,7 +124,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setTimeout(() => {
           onClose();
           if (onLoginSuccess) onLoginSuccess();
-        }, 700);
+        }, 350);
       } else {
         setErrorMessage(res.error || (isAr ? 'فشل الدخول التجريبي' : 'Demo login failed'));
       }

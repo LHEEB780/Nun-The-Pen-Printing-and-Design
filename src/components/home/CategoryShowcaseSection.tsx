@@ -4,6 +4,7 @@ import {
   PRODUCT_CATEGORIES,
   ProductCategoryMeta,
 } from '../../data/categoriesData';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
 import {
   Sparkles,
   ArrowRight,
@@ -38,6 +39,7 @@ export const CategoryShowcaseSection: React.FC<CategoryShowcaseSectionProps> = (
 }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { formatPrice } = useCurrencyStore();
   const { setSelectedArticleId } = useContentStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
   const productsList = getUnifiedProducts(adminProducts);
@@ -508,10 +510,7 @@ export const CategoryShowcaseSection: React.FC<CategoryShowcaseSectionProps> = (
                         {isAr ? 'السعر التقديري' : 'Starting from'}
                       </span>
                       <span className="font-extrabold text-base text-slate-900 font-mono">
-                        {prod.basePrice.toLocaleString()}{' '}
-                        <span className="text-xs font-normal text-slate-600">
-                          {isAr ? 'د.ع' : 'IQD'}
-                        </span>
+                        {formatPrice(prod.basePrice, { isAr })}
                       </span>
                     </div>
 

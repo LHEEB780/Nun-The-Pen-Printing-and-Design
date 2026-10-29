@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore, SavedDesign } from '../../store/useAuthStore';
 import { OrderRecord, ManufacturingStatus, useCartStore } from '../../store/useCartStore';
@@ -34,16 +34,28 @@ import {
   Check,
   MessageCircle,
   Maximize2,
+  Heart,
+  Award,
+  Coins,
+  Crown,
+  Gift,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { PRODUCTS, ProductItem } from '../../data/mockData';
+import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
+import { LoyaltyPointsTracker } from './LoyaltyPointsTracker';
 
 interface CustomerDashboardProps {
   onBackToShop: () => void;
   onOpenCustomizerWithProduct?: (productId: string) => void;
+  initialTab?: 'overview' | 'proofs' | 'orders' | 'designs' | 'wishlist' | 'loyalty' | 'profile';
 }
 
 export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   onBackToShop,
   onOpenCustomizerWithProduct,
+  initialTab = 'overview',
 }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -52,6 +64,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
     pastOrders,
     savedDesigns,
     digitalProofs,
+    wishlist,
+    loyaltyPoints,
+    removeFromWishlist,
     approveDigitalProof,
     requestProofRevision,
     hasProofNotification,
@@ -64,7 +79,51 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   } = useAuthStore();
 
   const { addItem } = useCartStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'proofs' | 'orders' | 'designs' | 'profile'>('overview');
+  const { formatPrice, currency, exchangeRate } = useCurrencyStore();
+  const adminProducts = useAdminStore((state) => state.adminProducts);
+  const allProducts = React.useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
+
+  const wishlistedProducts = React.useMemo(() => {
+    return wishlist
+      .map((id) => allProducts.find((p) => p.id === id) || PRODUCTS.find((p) => p.id === id))
+      .filter((p): p is ProductItem => Boolean(p));
+  }, [wishlist, allProducts]);
+
+  const handleRemoveFromWishlist = (productId: string, title: string) => {
+    removeFromWishlist(productId);
+    toast.info(isAr ? `تمت إزالة «${title}» من قائمة رغباتك` : `Removed "${title}" from wishlist`);
+  };
+
+  const handleAddToCartFromWishlist = (prod: ProductItem) => {
+    addItem({
+      productId: prod.id,
+      titleAr: prod.titleAr,
+      titleEn: prod.titleEn,
+      image: prod.image,
+      category: prod.category || 'led',
+      quantity: 1,
+      unitPrice: prod.basePrice,
+      totalPrice: prod.basePrice,
+      customOptions: {
+        customText: isAr ? 'طلب مخصص من المفضلة' : 'Custom from Wishlist',
+        fontName: 'الخط الكوفي الملكي',
+        dimensionLabelAr: prod.dimensions?.[0]?.labelAr || 'قياسي',
+        dimensionLabelEn: prod.dimensions?.[0]?.labelEn || 'Standard',
+        materialLabelAr: prod.materials?.[0]?.labelAr || 'تشطيب فاخر',
+        materialLabelEn: prod.materials?.[0]?.labelEn || 'Luxury Finish',
+        notes: 'إضافة سريعة من قائمة الرغبات',
+      },
+    });
+    toast.success(isAr ? `تمت إضافة «${prod.titleAr}» إلى سلة المشتريات!` : `Added "${prod.titleEn}" to your cart!`);
+  };
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'proofs' | 'orders' | 'designs' | 'wishlist' | 'loyalty' | 'profile'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(pastOrders[0]?.orderId || null);
   const [reorderSuccessToast, setReorderSuccessToast] = useState(false);
   const [selectedProofPreview, setSelectedProofPreview] = useState<string | null>(null);
@@ -85,6 +144,16 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   const [editGovernorate, setEditGovernorate] = useState(user?.governorate || 'بغداد - الكرخ');
   const [editAddress, setEditAddress] = useState(user?.address || '');
   const [profileSavedToast, setProfileSavedToast] = useState(false);
+
+  // Synchronize form values whenever user state updates or hydrates
+  useEffect(() => {
+    if (user) {
+      setEditName(user.fullName || '');
+      setEditPhone(user.phone || '');
+      setEditGovernorate(user.governorate || 'بغداد - الكرخ');
+      setEditAddress(user.address || '');
+    }
+  }, [user]);
 
   // Upload new design state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -270,7 +339,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
         {/* User Profile Banner Header */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-sky-500 text-white flex items-center justify-center font-bold text-2xl shadow-md shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center font-black text-2xl shadow-lg shadow-amber-500/20 ring-4 ring-amber-100/90 shrink-0">
               {user?.fullName?.charAt(0) || 'م'}
             </div>
             <div>
@@ -278,7 +347,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
                   {user?.fullName || (isAr ? 'حساب العميل' : 'Customer Account')}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-bold">
+                <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200/90 text-amber-900 text-[11px] font-black inline-flex items-center gap-1 shadow-2xs">
+                  <Sparkles className="w-3 h-3 text-amber-600 inline" />
                   {isAr ? 'عميل مميز' : 'Verified Client'}
                 </span>
               </div>
@@ -302,21 +372,50 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           {/* Quick Metrics */}
           <div className="flex items-center gap-6 border-t md:border-t-0 md:border-s border-slate-200 pt-4 md:pt-0 md:ps-8">
             <div className="text-center">
-              <span className="text-xl font-extrabold text-slate-900 font-mono block">
+              <span className="text-xl font-black text-slate-900 font-mono block">
                 {pastOrders.length}
               </span>
               <span className="text-xs text-slate-500">{isAr ? 'الطلبات المنفذة' : 'Total Orders'}</span>
             </div>
             <div className="text-center">
-              <span className="text-xl font-extrabold text-purple-700 font-mono block">
+              <span className="text-xl font-black text-amber-700 font-mono block">
                 {savedDesigns.length}
               </span>
               <span className="text-xs text-slate-500">{isAr ? 'التصاميم المحفوظة' : 'Saved Designs'}</span>
             </div>
+            {/* Wishlist Quick Metric */}
+            <div
+              onClick={() => setActiveTab('wishlist')}
+              className="text-center cursor-pointer group hover:opacity-80 transition-opacity"
+              title={isAr ? 'عرض قائمة الرغبات والمفضلة' : 'View Wishlist'}
+            >
+              <span className="text-xl font-black text-rose-600 font-mono block group-hover:scale-105 transition-transform">
+                {wishlist.length}
+              </span>
+              <span className="text-xs text-slate-500 flex items-center justify-center gap-1">
+                <Heart className="w-3 h-3 fill-rose-500 text-rose-500 inline" />
+                <span>{isAr ? 'قائمة الرغبات' : 'Wishlist'}</span>
+              </span>
+            </div>
+
+            {/* Loyalty Points Quick Metric */}
+            <div
+              onClick={() => setActiveTab('loyalty')}
+              className="text-center cursor-pointer group hover:opacity-80 transition-opacity"
+              title={isAr ? 'عرض رصيد نقاط الولاء والمكافآت' : 'View Loyalty Points'}
+            >
+              <span className="text-xl font-black text-amber-600 font-mono block group-hover:scale-105 transition-transform tabular-nums">
+                {loyaltyPoints.toLocaleString()}
+              </span>
+              <span className="text-xs text-slate-500 flex items-center justify-center gap-1">
+                <Award className="w-3.5 h-3.5 text-amber-600 inline" />
+                <span>{isAr ? 'نقاط الولاء' : 'Points'}</span>
+              </span>
+            </div>
             <button
               onClick={logout}
               type="button"
-              className="p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              className="p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors cursor-pointer"
               title={isAr ? 'تسجيل الخروج' : 'Log Out'}
             >
               <LogOut className="w-5 h-5" />
@@ -342,21 +441,24 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
 
         {/* Top Design Proof Alert Banner (واشعار في أعلى حساب للتنبيه) */}
         {(pendingProofsCount > 0 || hasProofNotification) && (
-          <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-600 via-amber-700 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-scale border border-amber-500/40">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/30 border border-amber-400/40 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+          <div className="mb-6 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/80 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5 animate-scale border border-amber-500/40 relative overflow-hidden">
+            {/* Subtle brand glow in background */}
+            <div className="absolute -top-12 -end-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex items-start gap-3.5 relative z-10">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center text-xl shrink-0 shadow-inner">
                 🔔
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-sm sm:text-base">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-base sm:text-lg text-amber-100 tracking-tight">
                     {isAr ? 'تنبيه عاجل: بروفة التصميم الخاصة بطلبك جاهزة للاعتماد!' : 'Alert: Design proof is ready for approval!'}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
                     {isAr ? 'إجراء مطلوب' : 'Action Required'}
                   </span>
                 </div>
-                <p className="text-xs text-white/90 mt-1 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
                   {isAr
                     ? 'قام مهندسو وخطاطو نُون والقَلَم بإعداد مسودة التصميم وأرسلوا نسخة إلى حسابك هنا ونسخة على واتساب للتواصل السريع. يرجى معاينتها واعتمادها للبدء بالتصنيع الفوري.'
                     : 'Our craft artisans prepared your digital proof and sent a copy to your account and WhatsApp. Please review and approve to begin production.'}
@@ -364,14 +466,14 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 shrink-0 w-full md:w-auto relative z-10">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab('proofs');
                   dismissProofNotification();
                 }}
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-colors shadow-sm cursor-pointer"
+                className="flex-1 md:flex-none px-5 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer"
               >
                 {isAr ? 'معاينة واعتماد التصميم الآن 🎨' : 'Review Design Proof Now'}
               </button>
@@ -384,11 +486,11 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 text-xs font-bold"
+                className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-md flex items-center gap-1.5 text-xs sm:text-sm font-bold shrink-0"
                 title={isAr ? 'تواصل فوري عبر واتساب' : 'WhatsApp'}
               >
                 <Phone className="w-4 h-4" />
-                <span className="hidden sm:inline">WhatsApp</span>
+                <span>WhatsApp</span>
               </a>
             </div>
           </div>
@@ -415,13 +517,13 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           <button
             onClick={() => setActiveTab('overview')}
             type="button"
-            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
               activeTab === 'overview'
-                ? 'border-purple-600 text-purple-700'
+                ? 'border-amber-600 text-amber-900 bg-amber-50/60 font-black'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <LayoutDashboard className="w-4 h-4" />
+            <LayoutDashboard className="w-4 h-4 text-amber-600" />
             <span>{isAr ? 'نظرة عامة والنشاط' : 'Overview & Activity'}</span>
           </button>
 
@@ -432,9 +534,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               dismissProofNotification();
             }}
             type="button"
-            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
               activeTab === 'proofs'
-                ? 'border-amber-600 text-amber-800 bg-amber-50/50 rounded-t-xl'
+                ? 'border-amber-600 text-amber-900 bg-amber-50/70 font-black'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -454,13 +556,13 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           <button
             onClick={() => setActiveTab('orders')}
             type="button"
-            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
               activeTab === 'orders'
-                ? 'border-purple-600 text-purple-700'
+                ? 'border-amber-600 text-amber-900 bg-amber-50/60 font-black'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Package className="w-4 h-4" />
+            <Package className="w-4 h-4 text-amber-600" />
             <span>{isAr ? 'سجل الطلبات وتتبع التصنيع' : 'Order History & Tracking'}</span>
             <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono">
               {pastOrders.length}
@@ -470,29 +572,65 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
           <button
             onClick={() => setActiveTab('designs')}
             type="button"
-            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
               activeTab === 'designs'
-                ? 'border-purple-600 text-purple-700'
+                ? 'border-amber-600 text-amber-900 bg-amber-50/60 font-black'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <FolderHeart className="w-4 h-4" />
+            <FolderHeart className="w-4 h-4 text-amber-600" />
             <span>{isAr ? 'التصاميم والشعارات المحفوظة' : 'Saved Designs & Logos'}</span>
             <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono">
               {savedDesigns.length}
             </span>
           </button>
 
+          {/* DEDICATED TAB: WISHLIST (قائمة الرغبات والمفضلة) */}
           <button
-            onClick={() => setActiveTab('profile')}
+            onClick={() => setActiveTab('wishlist')}
             type="button"
-            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'profile'
-                ? 'border-purple-600 text-purple-700'
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
+              activeTab === 'wishlist'
+                ? 'border-rose-500 text-rose-950 bg-rose-50/70 font-black'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Settings className="w-4 h-4" />
+            <Heart className={`w-4 h-4 ${activeTab === 'wishlist' ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+            <span>{isAr ? 'قائمة الرغبات والمفضلة' : 'Wishlist & Favorites'}</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold ${
+              wishlist.length > 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {wishlist.length}
+            </span>
+          </button>
+
+          {/* DEDICATED TAB: LOYALTY POINTS & REWARDS (نقاط الولاء والمكافآت) */}
+          <button
+            onClick={() => setActiveTab('loyalty')}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
+              activeTab === 'loyalty'
+                ? 'border-amber-600 text-amber-950 bg-amber-50/80 font-black'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Award className={`w-4 h-4 ${activeTab === 'loyalty' ? 'text-amber-600' : 'text-slate-400'}`} />
+            <span>{isAr ? 'نقاط الولاء والمكافآت' : 'Loyalty & Rewards'}</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-100 text-amber-900 tabular-nums">
+              {loyaltyPoints.toLocaleString()}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            type="button"
+            className={`px-5 py-3 text-xs sm:text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-xl ${
+              activeTab === 'profile'
+                ? 'border-amber-600 text-amber-900 bg-amber-50/60 font-black'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Settings className="w-4 h-4 text-amber-600" />
             <span>{isAr ? 'إدارة الحساب والعناوين' : 'Profile & Addresses'}</span>
           </button>
         </div>
@@ -501,16 +639,16 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
         {activeTab === 'overview' && (
           <div className="space-y-8 animate-fade-in">
             {/* Welcome banner with quick stats */}
-            <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
+            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/70 border border-amber-500/30 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
               <div className="relative z-10 max-w-2xl space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-purple-200">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-300" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-xs font-bold text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span>{isAr ? 'منصة العملاء المتقدمة' : 'Noon & Pen VIP Client Portal'}</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                   {isAr ? `أهلاً وسهلاً بك، ${user?.fullName?.split(' ')[0] || 'عزيزنا العميل'}!` : `Welcome back, ${user?.fullName || 'Customer'}!`}
                 </h2>
-                <p className="text-sm text-purple-200/80 leading-relaxed">
+                <p className="text-sm text-slate-300 leading-relaxed">
                   {isAr
                     ? 'تابع دورة تصنيع مجسمات الأكريليك وكروت البصمة الخاصة بك مباشرة من ورشتنا في بغداد، أو ابدأ تصميماً جديداً بضغطة زر.'
                     : 'Track your custom acrylic signs and foil business cards directly from our Baghdad fabrication facility, or initiate a new bespoke project.'}
@@ -527,7 +665,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                       }
                     }}
                     type="button"
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-sky-500 hover:from-purple-600 hover:to-sky-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>{isAr ? 'بدء تخصيص منتج جديد' : 'Start a New Customization'}</span>
@@ -551,12 +689,19 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                     type="button"
                     className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all cursor-pointer"
                   >
-                    <Package className="w-4 h-4 text-sky-400" />
+                    <Package className="w-4 h-4 text-amber-300" />
                     <span>{isAr ? 'عرض كافة الطلبات' : 'View All Orders'}</span>
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* FEATURED: Customer Loyalty Points Progress Bar & Tier Spotlight */}
+            <LoyaltyPointsTracker
+              variant="compact"
+              onSelectTab={(tab) => setActiveTab(tab as any)}
+              onNavigateToShop={onBackToShop}
+            />
 
             {/* FEATURED: Live Manufacturing Pipeline Spotlight for Latest Order */}
             {pastOrders[0] && (
@@ -576,7 +721,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                   <button
                     onClick={() => setActiveTab('orders')}
                     type="button"
-                    className="text-xs font-bold text-purple-700 hover:text-purple-800 hover:underline cursor-pointer"
+                    className="text-xs font-bold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
                   >
                     {isAr ? 'عرض كافة الطلبات ←' : 'View all orders →'}
                   </button>
@@ -605,7 +750,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 <button
                   onClick={() => setActiveTab('orders')}
                   type="button"
-                  className="text-xs font-bold text-purple-700 hover:text-purple-800 hover:underline cursor-pointer"
+                  className="text-xs font-bold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
                 >
                   {isAr ? 'عرض السجل الكامل ←' : 'View full history →'}
                 </button>
@@ -621,7 +766,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                   return (
                     <div
                       key={ord.orderId}
-                      className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 transition-all bg-slate-50/50 space-y-4 flex flex-col justify-between"
+                      className="p-5 rounded-2xl border border-slate-200 hover:border-amber-300 transition-all bg-slate-50/50 space-y-4 flex flex-col justify-between"
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
@@ -659,7 +804,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                               setExpandedOrderId(ord.orderId);
                             }}
                             type="button"
-                            className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 transition-colors flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold hover:bg-amber-100 transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <span>{isAr ? 'تفاصيل المسار' : 'Track'}</span>
                           </button>
@@ -935,7 +1080,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
             <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-pulse" />
                   <span>{isAr ? 'تصفية الطلبات بحسب مسار تصنيع الطلب في الورشة:' : 'Filter by Workshop Manufacturing Stage:'}</span>
                 </span>
                 <span className="text-[11px] text-slate-500 font-mono">
@@ -973,7 +1118,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                       onClick={() => setOrderStatusFilter(stage.id)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                         isSelected
-                          ? 'bg-purple-700 text-white shadow-xs'
+                          ? 'bg-amber-600 text-white shadow-xs'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -982,7 +1127,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                       {count > 0 && (
                         <span
                           className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                            isSelected ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-800'
+                            isSelected ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
                           }`}
                         >
                           {count}
@@ -1003,7 +1148,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 <button
                   onClick={onBackToShop}
                   type="button"
-                  className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700 transition-colors cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-md shadow-amber-500/20"
                 >
                   {isAr ? 'تصفح المتجر وابدأ أول طلب' : 'Explore Shop & Place First Order'}
                 </button>
@@ -1052,7 +1197,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                         className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/70 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center font-mono font-bold text-sm shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-800 border border-amber-200/80 flex items-center justify-center font-mono font-bold text-sm shrink-0">
                             #{idx + 1}
                           </div>
                           <div>
@@ -1081,8 +1226,12 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                         <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0">
                           <div className="text-start md:text-end">
                             <span className="text-[11px] text-slate-400 block">{isAr ? 'إجمالي الطلب:' : 'Total:'}</span>
-                            <span className="font-extrabold text-base text-purple-700 font-mono">
+                            <span className="font-extrabold text-base text-amber-800 font-mono">
                               {ord.grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-900 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full flex items-center gap-1 justify-end mt-0.5 shadow-2xs">
+                              <Coins className="w-3 h-3 text-amber-600 inline" />
+                              <span>+{ord.pointsEarned ?? Math.max(10, Math.floor(ord.grandTotal / 1000))} {isAr ? 'نقطة ولاء' : 'pts'}</span>
                             </span>
                           </div>
 
@@ -1147,7 +1296,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                                         <strong>{isAr ? 'الخامة:' : 'Material:'}</strong> {isAr ? it.customOptions.materialLabelAr : it.customOptions.materialLabelEn}
                                       </p>
                                       {it.customOptions.logoFileName && (
-                                        <p className="text-purple-700 font-mono text-[11px]">📎 {it.customOptions.logoFileName}</p>
+                                        <p className="text-amber-800 font-mono text-[11px]">📎 {it.customOptions.logoFileName}</p>
                                       )}
                                     </div>
                                   </div>
@@ -1174,7 +1323,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                           </div>
                           <div>
                             <span className="font-bold text-slate-900 block mb-0.5">{isAr ? 'بوابة السداد:' : 'Payment:'}</span>
-                            <span className="font-mono text-purple-700 font-semibold">{ord.paymentDetails.gatewayNameAr} ({ord.paymentDetails.transactionId})</span>
+                            <span className="font-mono text-amber-800 font-semibold">{ord.paymentDetails.gatewayNameAr} ({ord.paymentDetails.transactionId})</span>
                           </div>
                         </div>
 
@@ -1198,7 +1347,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                               e.stopPropagation();
                               handleReorder(ord);
                             }}
-                            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                           >
                             <Repeat className="w-4 h-4" />
                             <span>{isAr ? 'إعادة طلب هذه المنتجات المخصصة' : 'Re-order this Custom Order'}</span>
@@ -1230,7 +1379,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               <button
                 onClick={() => setShowUploadModal(true)}
                 type="button"
-                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>{isAr ? 'رفع تصميم جديد' : 'Upload Design'}</span>
@@ -1242,7 +1391,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               {savedDesigns.map((des) => (
                 <div
                   key={des.id}
-                  className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4 hover:border-purple-300 transition-all"
+                  className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4 hover:border-amber-300 transition-all"
                 >
                   <div>
                     {/* Thumbnail */}
@@ -1259,7 +1408,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                           type="text"
                           value={editingTitleText}
                           onChange={(e) => setEditingTitleText(e.target.value)}
-                          className="flex-1 px-2 py-1 text-xs rounded-lg border border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="flex-1 px-2 py-1 text-xs rounded-lg border border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
                           autoFocus
                         />
                         <button
@@ -1295,7 +1444,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                             setEditingDesignId(des.id);
                             setEditingTitleText(isAr ? des.titleAr : des.titleEn);
                           }}
-                          className="p-1 text-slate-400 hover:text-purple-600 transition-colors"
+                          className="p-1 text-slate-400 hover:text-amber-700 transition-colors"
                           title={isAr ? 'تعديل اسم التصميم' : 'Rename artwork'}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -1320,9 +1469,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                         }
                       }}
                       type="button"
-                      className="px-3.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                       <span>{isAr ? 'اطلب تصنيع بهذا الشعار' : 'Re-order with this Logo'}</span>
                     </button>
 
@@ -1363,7 +1512,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                         value={newDesignTitle}
                         onChange={(e) => setNewDesignTitle(e.target.value)}
                         placeholder={isAr ? 'مثال: شعار مطعم بغداد الجديد' : 'e.g. Restaurant Logo 2026'}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
 
@@ -1374,7 +1523,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                       <select
                         value={newDesignCategory}
                         onChange={(e) => setNewDesignCategory(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         <option value="led">{isAr ? 'لوحات وإضاءة LED' : 'LED Acrylic Signs'}</option>
                         <option value="boxes">{isAr ? 'علب وتغليف فاخر' : 'Luxury Packaging'}</option>
@@ -1393,7 +1542,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                           const file = e.target.files?.[0];
                           if (file) setUploadedFileName(file.name);
                         }}
-                        className="w-full text-xs text-slate-600 file:me-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                        className="w-full text-xs text-slate-600 file:me-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-800 hover:file:bg-amber-100"
                       />
                     </div>
 
@@ -1407,13 +1556,170 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700"
+                        className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20"
                       >
                         {isAr ? 'حفظ في المكتبة' : 'Save to Library'}
                       </button>
                     </div>
                   </form>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: WISHLIST & FAVORITES (قائمة الرغبات والمفضلة) */}
+        {activeTab === 'wishlist' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header Banner */}
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-rose-700 font-bold text-xs uppercase tracking-wider">
+                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                  <span>{isAr ? 'قائمة الرغبات والمفضلة المحفوظة' : 'Saved Wishlist & Favorites'}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-1">
+                  {isAr ? 'المنتجات التي قمت بحفظها للرجوع إليها لاحقاً' : 'Products Saved to Your Wishlist'}
+                </h3>
+                <p className="text-xs text-slate-600 mt-1.5 max-w-2xl leading-relaxed">
+                  {isAr
+                    ? 'يمكنك معاينة مواصفات كل قطعة، أو تخصيصها وطلبها فوراً، أو إضافتها بضغطة زر إلى سلة مشترياتك.'
+                    : 'Easily return to your favorite bespoke models, configure dimensions and illumination, or move directly to cart.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={onBackToShop}
+                  className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'استكشاف المزيد من المتجر' : 'Explore More Products'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Wishlist Items Grid */}
+            {wishlistedProducts.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/90 space-y-4">
+                <div className="w-16 h-16 rounded-3xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500 mx-auto">
+                  <Heart className="w-8 h-8" />
+                </div>
+                <h4 className="font-extrabold text-slate-900 text-lg">
+                  {isAr ? 'قائمة رغباتك فارغة حالياً' : 'Your wishlist is currently empty'}
+                </h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  {isAr
+                    ? 'أثناء تصفحك للمتجر أو صفحة تفاصيل أي منتج، اضغط على أيقونة القلب ❤️ لحفظ المنتجات في حسابك والرجوع إليها في أي وقت.'
+                    : 'While exploring our catalog or product pages, tap the heart icon ❤️ to save items to your account.'}
+                </p>
+                <button
+                  onClick={onBackToShop}
+                  type="button"
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 hover:shadow-lg transition-all cursor-pointer"
+                >
+                  {isAr ? 'تصفح كتالوج المتجر الآن' : 'Browse Shop Catalog'}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {wishlistedProducts.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className="group bg-white rounded-3xl border border-slate-200/90 hover:border-amber-400 hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden"
+                  >
+                    <div>
+                      {/* Image */}
+                      <div className="relative aspect-4/3 w-full bg-slate-950 overflow-hidden">
+                        <img
+                          src={prod.image}
+                          alt={isAr ? prod.titleAr : prod.titleEn}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute top-3 start-3 px-3 py-1 bg-white/95 backdrop-blur-xs text-slate-900 text-xs font-bold rounded-lg shadow-2xs">
+                          {isAr ? prod.categoryLabelAr : prod.categoryLabelEn}
+                        </div>
+
+                        {/* Remove from Wishlist Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromWishlist(prod.id, isAr ? prod.titleAr : prod.titleEn)}
+                          className="absolute top-3 end-3 w-8 h-8 rounded-xl bg-white/95 hover:bg-rose-50 text-rose-500 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                          title={isAr ? 'حذف من قائمة الرغبات' : 'Remove from wishlist'}
+                        >
+                          <Heart className="w-4 h-4 fill-current" />
+                        </button>
+
+                        <div className="absolute bottom-3 end-3 px-2.5 py-1 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-medium rounded-lg flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#87CEEB]" />
+                          <span>{isAr ? prod.leadTimeAr : prod.leadTimeEn}</span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5 space-y-3">
+                        <h4 className="font-extrabold text-base text-slate-950 leading-snug line-clamp-1">
+                          {isAr ? prod.titleAr : prod.titleEn}
+                        </h4>
+                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                          {isAr ? prod.descriptionAr : prod.descriptionEn}
+                        </p>
+
+                        <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">
+                              {isAr ? 'السعر الأساسي يبدأ من' : 'Base price from'}
+                            </span>
+                            <span className="font-mono font-black text-slate-900 text-base">
+                              {formatPrice(prod.basePrice, { isAr })}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                            {isAr ? 'ضمان ورشة نون والقلم' : 'Atelier Guaranteed'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="p-5 pt-0 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenCustomizerWithProduct) {
+                              onOpenCustomizerWithProduct(prod.id);
+                            } else {
+                              onBackToShop();
+                            }
+                          }}
+                          className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                          <span>{isAr ? 'تخصيص وطلب' : 'Customize'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddToCartFromWishlist(prod)}
+                          className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                          <span>{isAr ? 'أضف للسلة' : 'Add to Cart'}</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFromWishlist(prod.id, isAr ? prod.titleAr : prod.titleEn)}
+                        className="w-full py-1.5 text-center text-[11px] font-semibold text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                      >
+                        {isAr ? 'إزالة من قائمة الرغبات' : 'Remove from wishlist'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1448,7 +1754,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
@@ -1461,7 +1767,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                   required
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
@@ -1472,7 +1778,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                 <select
                   value={editGovernorate}
                   onChange={(e) => setEditGovernorate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                 >
                   {governorates.map((gov) => (
                     <option key={gov} value={gov}>
@@ -1490,20 +1796,28 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
                   rows={3}
                   value={editAddress}
                   onChange={(e) => setEditAddress(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               <div className="pt-3">
                 <button
                   type="submit"
-                  className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-md"
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-md shadow-amber-500/20"
                 >
                   {isAr ? 'حفظ التعديلات' : 'Save Changes'}
                 </button>
               </div>
             </form>
           </div>
+        )}
+
+        {/* TAB 5: DEDICATED LOYALTY POINTS & REWARDS PROGRAM */}
+        {activeTab === 'loyalty' && (
+          <LoyaltyPointsTracker
+            variant="full"
+            onNavigateToShop={onBackToShop}
+          />
         )}
       </div>
 

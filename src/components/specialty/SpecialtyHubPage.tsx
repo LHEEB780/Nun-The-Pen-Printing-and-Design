@@ -28,6 +28,7 @@ import { SpecialtyId, SPECIALTY_GATEWAYS } from '../home/SpecialtyGatewaysSectio
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { PRODUCTS, ProductItem } from '../../data/mockData';
 import { useCartStore } from '../../store/useCartStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
 import { toast } from 'sonner';
 import {
   StudioSidebarFilters,
@@ -59,6 +60,7 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { formatPrice } = useCurrencyStore();
 
   // Filters State
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -805,11 +807,8 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
                           {/* Price & MOQ Section */}
                           <div className="mt-1">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-xs sm:text-sm md:text-base font-black text-amber-950">
-                                {prod.basePrice.toLocaleString()}
-                              </span>
-                              <span className="text-[10px] sm:text-[11px] font-bold text-amber-800">
-                                د.ع
+                              <span className="text-xs sm:text-sm md:text-base font-black text-amber-950 font-mono">
+                                {formatPrice(prod.basePrice, { isAr })}
                               </span>
                               <span className="text-[9px] sm:text-[10px] text-slate-400">
                                 {isAr ? '/ قطعة' : '/ pc'}
@@ -882,8 +881,8 @@ export const SpecialtyHubPage: React.FC<SpecialtyHubPageProps> = ({
                           <h3 className="font-black text-base text-slate-900 group-hover:text-amber-900 transition-colors">
                             {isAr ? prod.titleAr : prod.titleEn}
                           </h3>
-                          <div className="text-base font-black text-amber-950 bg-amber-100/70 px-3 py-1 rounded-xl">
-                            {prod.basePrice.toLocaleString()} د.ع
+                          <div className="text-base font-black text-amber-950 bg-amber-100/70 px-3 py-1 rounded-xl font-mono">
+                            {formatPrice(prod.basePrice, { isAr })}
                           </div>
                         </div>
 

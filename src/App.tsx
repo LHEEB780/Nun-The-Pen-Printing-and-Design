@@ -18,12 +18,15 @@ import { Footer } from './components/layout/Footer';
 import { AuthModal } from './components/auth/AuthModal';
 import { CustomizerModal } from './components/customizer/CustomizerModal';
 import { CartDrawer } from './components/cart/CartDrawer';
+import { FavoritesDrawer } from './components/wishlist/FavoritesDrawer';
 import { ArticleDetailModal } from './components/article/ArticleDetailModal';
 import { MessageCircle } from 'lucide-react';
 import { Toaster } from 'sonner';
-import { COMPANY_CONTACT } from './data/mockData';
 import { OrderRecord, useCartStore } from './store/useCartStore';
 import { useAuthStore } from './store/useAuthStore';
+import { useAffiliateStore } from './store/useAffiliateStore';
+import { COMPANY_CONTACT } from './data/mockData';
+import { initAnalytics, trackPageView, trackEvent } from './utils/analytics';
 
 // Heavy route-level views are lazy-loaded (React.lazy) so the initial bundle
 // stays small — the admin dashboard (recharts) alone used to add ~700KB.
@@ -37,6 +40,7 @@ const CustomerDashboard = lazy(() => import('./components/dashboard/CustomerDash
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const SeasonalOffersPage = lazy(() => import('./components/offers/SeasonalOffersPage').then((m) => ({ default: m.SeasonalOffersPage })));
 const DynamicLandingPage = lazy(() => import('./components/landing/DynamicLandingPage').then((m) => ({ default: m.DynamicLandingPage })));
+const PartnerPortal = lazy(() => import('./components/affiliates/PartnerPortal').then((m) => ({ default: m.PartnerPortal })));
 
 import type { AdminDashboardTab } from './components/admin/AdminDashboard';
 
@@ -51,8 +55,9 @@ const ViewFallback = () => (
 );
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'landing'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'landing' | 'partners'>('home');
   const [adminInitialTab, setAdminInitialTab] = useState<AdminDashboardTab>('analytics');
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<'overview' | 'proofs' | 'orders' | 'designs' | 'wishlist' | 'loyalty' | 'profile'>('overview');
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<SpecialtyId>('boxes');
   const [selectedProductId, setSelectedProductId] = useState<string>('prod-pizza-box');
   const [landingPageProductId, setLandingPageProductId] = useState<string | undefined>(undefined);
@@ -65,10 +70,68 @@ export default function App() {
   const { lastOrder } = useCartStore();
   const { addOrderToHistory, isAuthenticated } = useAuthStore();
 
-  // Handle deep-linking from shared product URLs or social ad campaign landing pages on mount
+  // Initialize Analytics on mount
+  React.useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  // Track page views and portal switches automatically
+  React.useEffect(() => {
+    trackPageView(currentView, {
+      specialtyId: currentView === 'specialty' ? selectedSpecialtyId : undefined,
+      productId: currentView === 'product' ? selectedProductId : undefined,
+    });
+  }, [currentView, selectedSpecialtyId, selectedProductId]);
+
+  // React to authentication state changes: redirect if user logs out while in a protected portal
+  React.useEffect(() => {
+    if (!isAuthenticated && (currentView === 'dashboard' || currentView === 'admin')) {
+      setCurrentView('home');
+    }
+  }, [isAuthenticated, currentView]);
+
+  // Handle deep-linking from shared product URLs, partner referral links, or ad campaigns on mount
   React.useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
+
+      // Check for partner referral code in URL (?ref=NQ-XXXX or ?partner=NQ-XXXX)
+      const refCode = params.get('ref') || params.get('partner');
+      if (refCode) {
+        try {
+          localStorage.setItem('noon_applied_partner_code', refCode.trim());
+          trackEvent('partner_referral_detected', `رصد كود إحالة شريك: ${refCode.trim()}`, 'referrals', {
+            refCode: refCode.trim(),
+          });
+        } catch {
+          // ignore
+        }
+      }
+
+      // Track QR campaign scan
+      const campaignCode = params.get('qr');
+      if (campaignCode) {
+        useAffiliateStore.getState().incrementQRCampaignScans(campaignCode);
+        trackEvent('qr_scan_detected', `مسح باركود حملة تسويقية: ${campaignCode}`, 'qr_campaigns', {
+          campaignCode,
+          refCode: refCode || undefined,
+        });
+      }
+
+      // Check for partner portal deep-link (?portal=partner or ?partners=true)
+      if (params.get('portal') === 'partner' || params.get('partners') === 'true' || params.has('partner_portal')) {
+        trackEvent('portal_switch', 'فتح بوابة الشركاء وممثلي المبيعات مباشرة عبر الرابط', 'partners');
+        setCurrentView('partners');
+        return;
+      }
+
+      // Check for offers view in QR link (?offers=true)
+      if (params.get('offers') === 'true' || params.get('view') === 'offers') {
+        trackEvent('portal_switch', 'فتح عروض الموسم الترويجية عبر رابط العرض', 'marketing');
+        setCurrentView('offers');
+        return;
+      }
+
       // Check for multi-platform ad campaign landing parameter (TikTok, Facebook, Instagram, etc.)
       if (params.get('landing') === 'true' || params.has('campaign') || params.has('lp') || params.has('tiktok')) {
         const campaignProd = params.get('prod') || params.get('productId');
@@ -76,6 +139,9 @@ export default function App() {
           setLandingPageProductId(campaignProd);
           setSelectedProductId(campaignProd);
         }
+        trackEvent('ad_campaign_landing', 'دخول صفحة هبوط إعلانية من حملة تواصل اجتماعي', 'marketing', {
+          productId: campaignProd,
+        });
         setCurrentView('landing');
         return;
       }
@@ -131,6 +197,7 @@ export default function App() {
     }
     setCustomizerInitialId(targetId);
     setCustomizerOpen(true);
+    trackEvent('customizer_opened', `فتح استوديو التخصيص للمنتج: ${targetId}`, 'customizer', { productId: targetId });
   };
 
   const handleCloseCustomizer = () => {
@@ -138,15 +205,20 @@ export default function App() {
     setCustomizerInitialId(undefined);
   };
 
-  const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: SpecialtyId) => {
+  const handleNavigate = (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'partners', specialtyId?: SpecialtyId) => {
+    // Dynamic live check to avoid any stale React closure issues
+    const isAuthed = useAuthStore.getState().isAuthenticated;
+
     // Guard authenticated-only areas
-    if ((view === 'dashboard' || view === 'admin') && !isAuthenticated) {
+    if ((view === 'dashboard' || view === 'admin') && !isAuthed) {
       setAuthModalOpen(true);
       return;
     }
+    setAuthModalOpen(false);
     if (view === 'specialty' && specialtyId) {
       setSelectedSpecialtyId(specialtyId);
     }
+    trackEvent('portal_navigation', `الانتقال إلى بوابة: ${view}`, 'portals', { view, specialtyId });
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -154,14 +226,19 @@ export default function App() {
   const handleOrderSuccess = (order: OrderRecord) => {
     setCompletedOrder(order);
     addOrderToHistory(order);
+    trackEvent('purchase_completed', `اكتمال طلب شراء بقيمة ${order.grandTotal.toLocaleString()} د.ع`, 'ecommerce', {
+      orderId: order.orderId,
+      grandTotal: order.grandTotal,
+      partnerCode: order.shipping?.partnerCode || order.promoCode,
+    });
     setCurrentView('order-confirmation');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Top Navigation - Hidden on landing page and product detail page for maximum screen space & distraction-free focus */}
-      {currentView !== 'landing' && currentView !== 'product' && (
+      {/* Top Navigation - Hidden on landing page, product detail, and partner portal for full dedicated focus */}
+      {currentView !== 'landing' && currentView !== 'product' && currentView !== 'partners' && (
         <Navbar
           currentView={currentView}
           onNavigate={handleNavigate}
@@ -253,6 +330,7 @@ export default function App() {
           <CustomerDashboard
             onBackToShop={() => handleNavigate('shop')}
             onOpenCustomizerWithProduct={handleSelectProduct}
+            initialTab={dashboardInitialTab}
           />
         )}
 
@@ -289,11 +367,18 @@ export default function App() {
             onSelectProduct={handleSelectProduct}
           />
         )}
+
+        {currentView === 'partners' && (
+          <PartnerPortal
+            onBackToStore={() => handleNavigate('shop')}
+            isAr={true}
+          />
+        )}
         </Suspense>
       </main>
 
-      {/* Footer - Hidden on landing page */}
-      {currentView !== 'landing' && (
+      {/* Footer - Hidden on landing page and partner portal */}
+      {currentView !== 'landing' && currentView !== 'partners' && (
         <Footer
           onNavigate={handleNavigate}
           onOpenCustomizer={handleOpenCustomizer}
@@ -316,6 +401,17 @@ export default function App() {
         }}
       />
 
+      {/* Slide-over Saved Favorites & Wishlist Drawer */}
+      <FavoritesDrawer
+        onSelectProduct={handleSelectProduct}
+        onOpenCustomizer={handleOpenCustomizer}
+        onNavigateToDashboard={() => {
+          setDashboardInitialTab('wishlist');
+          handleNavigate('dashboard');
+        }}
+        onNavigateToShop={() => handleNavigate('shop')}
+      />
+
       {/* Full In-Depth Article Reader Modal for Quick Links & Knowledge Base */}
       <ArticleDetailModal
         onOpenCustomizer={handleOpenCustomizer}
@@ -327,11 +423,15 @@ export default function App() {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onLoginSuccess={() => handleNavigate('dashboard')}
+        onLoginSuccess={() => {
+          setAuthModalOpen(false);
+          setCurrentView('dashboard');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
-      {/* Floating WhatsApp Quick Action Button (Hidden on landing page) */}
-      {currentView !== 'landing' && (
+      {/* Floating WhatsApp Quick Action Button (Hidden on landing page and partner portal) */}
+      {currentView !== 'landing' && currentView !== 'partners' && (
         <a
           href={COMPANY_CONTACT.whatsappUrl}
           target="_blank"

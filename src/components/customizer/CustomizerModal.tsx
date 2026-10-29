@@ -12,6 +12,8 @@ import {
 import { useCartStore } from '../../store/useCartStore';
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
+import { useAutonomousAgentsStore } from '../../store/useAutonomousAgentsStore';
 import { USD_TO_IQD_RATE } from '../../hooks/usePricingCalculator';
 import {
   X,
@@ -46,6 +48,7 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { formatPrice, currency } = useCurrencyStore();
   const { addItem, setIsOpen: setCartOpen } = useCartStore();
   const { addDigitalProof } = useAuthStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
@@ -68,6 +71,8 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
   // Client Data & Inputs
   const [companyName, setCompanyName] = useState<string>('');
   const [subtitle, setSubtitle] = useState<string>('');
+  const [businessCategory, setBusinessCategory] = useState<string>('none');
+  const [customBusinessCategory, setCustomBusinessCategory] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
@@ -185,11 +190,29 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
     toast.info(isAr ? 'تم حذف الملف المرفوع' : 'Removed uploaded file');
   };
 
+  const resolvedBusinessCategoryText = 
+    businessCategory === 'other'
+      ? (customBusinessCategory ? `أخرى (${customBusinessCategory})` : 'أخرى')
+      : businessCategory === 'cafe'
+      ? 'كافيه ومقهى'
+      : businessCategory === 'restaurant'
+      ? 'مطعم'
+      : businessCategory === 'corporate'
+      ? 'شركة أو مكتب'
+      : businessCategory === 'hotel'
+      ? 'فندق'
+      : businessCategory === 'clinic'
+      ? 'عيادة أو مركز طبي'
+      : businessCategory === 'retail'
+      ? 'متجر تجزئة'
+      : '';
+
   // Pre-filled WhatsApp message
   const whatsappInquiryUrl = `https://wa.me/9647800000000?text=${encodeURIComponent(
     `مرحباً استوديو نون والقلم، أود طلب وتجهيز تصميم خاص لمنتج: ${isAr ? selectedProduct.titleAr : selectedProduct.titleEn}\n` +
       (companyName ? `اسم الجهة/النص المطلوب: ${companyName}\n` : '') +
       (subtitle ? `الصفة/النشاط: ${subtitle}\n` : '') +
+      (resolvedBusinessCategoryText ? `صنف النشاط: ${resolvedBusinessCategoryText}\n` : '') +
       (phone ? `رقم هاتف العميل: ${phone}\n` : '') +
       `المقاس: ${isAr ? selectedDimension.labelAr : selectedDimension.labelEn}\n` +
       `الخامة: ${isAr ? selectedMaterial.labelAr : selectedMaterial.labelEn}\n` +
@@ -209,6 +232,7 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
     const formattedNotes = [
       `بيانات العميل: ${companyName}`,
       subtitle ? `النشاط/الصفة: ${subtitle}` : '',
+      resolvedBusinessCategoryText ? `صنف النشاط: ${resolvedBusinessCategoryText}` : '',
       phone ? `هاتف وواتساب: ${phone}` : '',
       logoFileName ? `الملف المرفوع: ${logoFileName}` : '',
       notes ? `ملاحظات العميل: ${notes}` : '',
@@ -263,6 +287,41 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
       clientNotes: notes,
       whatsappMessage: `مرحباً نون والقلم، قمت بتثبيت طلب ${selectedProduct.titleAr} برقم مؤقت ${mockOrderId}. الاسم: ${companyName}. أرجو إرسال بروفة التصميم للاعتماد.`,
     });
+
+    // Autonomous Agent Pipeline: Task-oriented inspection & A2A message dispatch
+    const { createTask, sendInterAgentMessage, isGlobalKillSwitchActive } = useAutonomousAgentsStore.getState();
+    if (!isGlobalKillSwitchActive) {
+      createTask({
+        agentId: 'agent-orders-customizer',
+        titleAr: `تدقيق مواصفات وشعار: ${selectedProduct.titleAr} (${companyName})`,
+        titleEn: `Laser specs & vector audit: ${selectedProduct.titleEn} (${companyName})`,
+        riskLevel: 'green',
+        priority: 'high',
+        requiresHumanApproval: false,
+        inputData: {
+          orderId: mockOrderId,
+          productTitle: selectedProduct.titleAr,
+          companyName,
+          material: selectedMaterial.labelAr,
+          dimension: selectedDimension.labelAr,
+          hasLogo: !!logoFileName,
+          totalPriceIQD,
+        },
+        outputResult: {
+          readiness: 'جاهز 100% للتصنيع والقص الليزري',
+          autoAuditedAt: new Date().toLocaleTimeString('ar-IQ'),
+        },
+      });
+
+      sendInterAgentMessage({
+        senderAgentId: 'agent-orders-customizer',
+        targetAgentId: 'agent-orchestrator',
+        action: 'order_specs_verified',
+        priority: 'medium',
+        payload: { orderId: mockOrderId, companyName, totalIQD: totalPriceIQD },
+        reasoningSnippetAr: `تم فحص أبعاد وخامات ${companyName} (${totalPriceIQD.toLocaleString()} د.ع) آلياً بنجاح ومطابقة ملفات الحفر.`,
+      });
+    }
 
     setIsAddedSuccess(true);
     toast.success(
@@ -407,8 +466,8 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
                   <Maximize2 className="w-4 h-4" />
                 </button>
 
-                <div className="absolute bottom-3 end-3 px-3 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-950 text-xs font-black shadow-md border border-slate-200 z-10">
-                  {selectedProduct.basePrice.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
+                <div className="absolute bottom-3 end-3 px-3 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-950 text-xs font-black shadow-md border border-slate-200 z-10 font-mono">
+                  {formatPrice(selectedProduct.basePrice, { isAr })}
                 </div>
               </div>
 
@@ -571,6 +630,56 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
+              </div>
+
+              {/* 1.5. Business Activity / Category Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                  <span>{isAr ? 'صنف أو نوع النشاط التجاري (اختياري):' : 'Business Category / Type (Optional):'}</span>
+                  <span className="text-[10px] text-slate-400">{isAr ? 'لتخصيص التصميم بدقة' : 'For design customization'}</span>
+                </label>
+                <select
+                  value={businessCategory}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBusinessCategory(val);
+                    if (val !== 'other') setCustomBusinessCategory('');
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                >
+                  <option value="none">{isAr ? 'اختر صنف النشاط (اختياري)...' : 'Select business type (optional)...'}</option>
+                  <option value="cafe">{isAr ? 'كافيه ومقهى' : 'Cafe'}</option>
+                  <option value="restaurant">{isAr ? 'مطعم' : 'Restaurant'}</option>
+                  <option value="corporate">{isAr ? 'شركة أو مكتب' : 'Corporate Office'}</option>
+                  <option value="hotel">{isAr ? 'فندق' : 'Hotel'}</option>
+                  <option value="clinic">{isAr ? 'عيادة أو مركز طبي' : 'Clinic'}</option>
+                  <option value="retail">{isAr ? 'متجر تجزئة' : 'Retail'}</option>
+                  <option value="other">{isAr ? 'أخرى (اكتب مجالك)' : 'Other (Specify your work)'}</option>
+                </select>
+
+                {/* When 'other' is selected: reveal custom input */}
+                {businessCategory === 'other' && (
+                  <div className="p-3 bg-amber-50/80 border-2 border-amber-300 rounded-2xl animate-in fade-in slide-in-from-top-1 duration-200 space-y-1.5 shadow-2xs">
+                    <label className="text-xs font-bold text-amber-950 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                        {isAr ? 'يرجى كتابة نوع عملك أو نشاطك بالتفصيل:*' : 'Please specify your line of work / business:*'}
+                      </span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                        {isAr ? 'مخصص' : 'Custom'}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={customBusinessCategory}
+                      onChange={(e) => setCustomBusinessCategory(e.target.value)}
+                      placeholder={isAr ? 'مثال: صالون تجميل، مركز تدريب، وكالة دعاية، مدرسة أهلية...' : 'e.g. Beauty Salon, Training Center, Ad Agency...'}
+                      className="w-full px-3.5 py-2 rounded-xl border border-amber-400 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* 2. Phone / WhatsApp Number */}
@@ -796,17 +905,19 @@ export const CustomizerModal: React.FC<CustomizerModalProps> = ({
                   </span>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <span className="text-lg sm:text-xl font-black text-amber-400 font-mono">
-                      {totalPriceIQD.toLocaleString()} د.ع
+                      {formatPrice(totalPriceIQD, { isAr })}
                     </span>
                     <span className="text-xs text-slate-400 font-mono">
-                      (~${totalPriceUSD})
+                      {currency === 'USD'
+                        ? `(${totalPriceIQD.toLocaleString()} د.ع)`
+                        : `(~${totalPriceUSD}$)`}
                     </span>
                   </div>
                 </div>
 
                 <div className="text-end text-[11px] text-slate-300">
-                  <span className="block font-medium">
-                    {quantity} × {unitPriceIQD.toLocaleString()} د.ع
+                  <span className="block font-medium font-mono">
+                    {quantity} × {formatPrice(unitPriceIQD, { isAr })}
                   </span>
                   <span className="text-[10px] text-emerald-400 font-bold">
                     {isAr ? 'شامل إعداد البروفة والتعديل' : 'Proof prep included'}

@@ -52,7 +52,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     icon: React.ElementType;
     badgeAr: string;
     badgeEn: string;
-    color: string;
+    iconBg: string;
+    iconBorder: string;
+    iconColor: string;
+    iconGlow: string;
   }> = [
     {
       id: 'boxes',
@@ -63,7 +66,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       icon: Package,
       badgeAr: 'علب صلبة وهدايا',
       badgeEn: 'Rigid Setup Boxes',
-      color: 'hover:border-amber-400 group-hover:text-amber-800',
+      iconBg: 'bg-gradient-to-br from-amber-100 via-amber-50 to-amber-200/60',
+      iconBorder: 'border-amber-300/90',
+      iconColor: 'text-amber-800',
+      iconGlow: 'shadow-amber-500/10 ring-amber-400/25',
     },
     {
       id: 'led',
@@ -74,7 +80,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       icon: Sparkles,
       badgeAr: 'إضاءة ودروع تكريم',
       badgeEn: 'Illuminated Trophies',
-      color: 'hover:border-purple-400 group-hover:text-purple-800',
+      iconBg: 'bg-gradient-to-br from-amber-100/90 via-yellow-50 to-amber-200/60',
+      iconBorder: 'border-amber-300/90',
+      iconColor: 'text-amber-700',
+      iconGlow: 'shadow-amber-500/15 ring-amber-400/25',
     },
     {
       id: 'cards',
@@ -85,7 +94,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       icon: CreditCard,
       badgeAr: 'كروت قطنية ملكية',
       badgeEn: 'Fine Cotton Stationery',
-      color: 'hover:border-sky-400 group-hover:text-sky-800',
+      iconBg: 'bg-gradient-to-br from-amber-50 via-stone-100/80 to-amber-100/70',
+      iconBorder: 'border-amber-300/90',
+      iconColor: 'text-amber-800',
+      iconGlow: 'shadow-amber-500/10 ring-amber-400/25',
     },
     {
       id: 'occasions',
@@ -96,7 +108,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       icon: HeartHandshake,
       badgeAr: 'زفاف وتخرج ومناسبات',
       badgeEn: 'Weddings & Milestones',
-      color: 'hover:border-rose-400 group-hover:text-rose-800',
+      iconBg: 'bg-gradient-to-br from-amber-100/80 via-orange-50/50 to-amber-200/50',
+      iconBorder: 'border-amber-300/90',
+      iconColor: 'text-amber-800',
+      iconGlow: 'shadow-amber-500/10 ring-amber-400/25',
     },
   ];
 
@@ -298,7 +313,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   </div>
                 </div>
 
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                <span className="text-[10px] font-bold text-amber-900 bg-amber-50 border border-amber-200/90 px-2.5 py-1 rounded-lg">
                   {isAr ? '٤ استوديوهات' : '4 Studios'}
                 </span>
               </div>
@@ -311,11 +326,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                     <div
                       key={item.id}
                       onClick={() => handleSpecialtyClick(item.id)}
-                      className="group p-3 rounded-2xl border border-slate-100 hover:border-amber-300 hover:bg-amber-50/40 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs hover:shadow-xs"
+                      className="group p-3 sm:p-3.5 rounded-2xl border border-amber-100/90 bg-white hover:border-amber-300 hover:bg-amber-50/50 transition-all duration-300 cursor-pointer flex items-center justify-between gap-3 shadow-2xs hover:shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-amber-100 text-slate-700 group-hover:text-amber-900 flex items-center justify-center shrink-0 border border-slate-200 transition-colors">
-                          <ItemIcon className="w-5 h-5" />
+                        <div
+                          className={`w-11 h-11 rounded-2xl ${item.iconBg} ${item.iconColor} flex items-center justify-center shrink-0 border ${item.iconBorder} ring-1 ${item.iconGlow} shadow-xs group-hover:scale-105 group-hover:shadow-sm transition-all duration-300`}
+                        >
+                          <ItemIcon className="w-5 h-5 stroke-[2.2]" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -329,9 +346,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                         </div>
                       </div>
 
-                      <div className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-amber-900 opacity-80 group-hover:opacity-100">
+                      <div className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-amber-900 group-hover:text-amber-950 opacity-85 group-hover:opacity-100">
                         <span className="hidden sm:inline">{isAr ? 'دخول' : 'Enter'}</span>
-                        {isAr ? <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" /> : <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />}
+                        {isAr ? (
+                          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+                        ) : (
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                        )}
                       </div>
                     </div>
                   );

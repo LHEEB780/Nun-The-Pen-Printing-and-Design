@@ -97,6 +97,25 @@ export const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({
             </div>
           </div>
 
+          {/* Sales Partner Dedicated Badge (If attributed) */}
+          {order.partnerName && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-100/70 to-amber-50 border border-amber-300 text-amber-950 inline-flex items-center gap-3 text-xs shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                ★
+              </div>
+              <div className="text-start">
+                <span className="text-[10px] text-amber-800 font-bold block">
+                  {isAr ? 'فريق المبيعات والشركاء المعتمدين:' : 'Certified Sales Partner:'}
+                </span>
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900 block">
+                  {isAr
+                    ? `تمت خدمتك عبر شريكنا وممثل المبيعات: ${order.partnerName} (${order.partnerEmployeeId || order.partnerCode})`
+                    : `Assisted by our Certified Partner: ${order.partnerName} (${order.partnerEmployeeId || order.partnerCode})`}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button

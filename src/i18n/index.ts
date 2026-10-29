@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { detectClientLocaleAndCountry } from '../utils/geoDetection';
 
 export const resources = {
   ar: {
@@ -347,6 +348,16 @@ const getInitialLanguage = (): string => {
       }
     } catch {
       // localStorage may fail in private mode
+    }
+
+    // Automatic country-based detection:
+    // All Arab countries (Iraq, Saudi Arabia, UAE, Kuwait, Egypt, Jordan, etc.) -> 'ar'
+    // International / Western countries -> 'en'
+    try {
+      const geo = detectClientLocaleAndCountry();
+      return geo.language;
+    } catch {
+      // ignore fallback
     }
   }
   return 'ar';

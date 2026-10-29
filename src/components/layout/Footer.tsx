@@ -1,11 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, Mail, MapPin, Clock, ArrowUpRight, Sparkles, MessageCircle, BookOpen, ShieldAlert } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ArrowUpRight, Sparkles, MessageCircle, BookOpen, ShieldAlert, Briefcase } from 'lucide-react';
 import { COMPANY_CONTACT } from '../../data/mockData';
 import { useContentStore, QuickLinkSectionKey } from '../../store/useContentStore';
 
 interface FooterProps {
-  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: any) => void;
+  onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'partners', specialtyId?: any) => void;
   onOpenCustomizer?: (productId?: string) => void;
 }
 
@@ -241,21 +241,38 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>{t('footer.rights')}</p>
 
-          {/* Admin Dashboard Access (Moved to bottom of the website as requested) */}
-          {onNavigate && (
-            <button
-              onClick={() => {
-                onNavigate('admin');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              type="button"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-purple-200/90 bg-white hover:bg-purple-50 text-purple-900 text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
-              title={isAr ? 'لوحة تحكم الإدارة والموظفين (RBAC)' : 'Admin Dashboard (RBAC)'}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
-              <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard (RBAC)'}</span>
-            </button>
-          )}
+          {/* Admin & Partners Portal Access */}
+          <div className="flex flex-wrap items-center gap-2">
+            {onNavigate && (
+              <button
+                onClick={() => {
+                  onNavigate('partners');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                type="button"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+                title={isAr ? 'بوابة شركاء نون والقلم وممثلي المبيعات' : 'Sales Partners Portal'}
+              >
+                <Briefcase className="w-3.5 h-3.5 text-amber-700 group-hover:scale-110 transition-transform" />
+                <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
+              </button>
+            )}
+
+            {onNavigate && (
+              <button
+                onClick={() => {
+                  onNavigate('admin');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                type="button"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-purple-200/90 bg-white hover:bg-purple-50 text-purple-900 text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+                title={isAr ? 'لوحة تحكم الإدارة والموظفين (RBAC)' : 'Admin Dashboard (RBAC)'}
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
+                <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard (RBAC)'}</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-1.5 text-slate-500 font-medium">
             <span>{t('footer.locationNotice')}</span>

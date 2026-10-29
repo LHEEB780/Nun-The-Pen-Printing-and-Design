@@ -129,7 +129,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         return (
           <code
             key={i}
-            className="font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200/70 inline-block"
+            className="font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/80 inline-block"
             dir="ltr"
           >
             {inner}
@@ -142,7 +142,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
           <a
             key={i}
             href={`mailto:${part}`}
-            className="font-semibold text-purple-700 hover:text-purple-900 underline dir-ltr inline-block"
+            className="font-semibold text-amber-700 hover:text-amber-900 underline dir-ltr inline-block"
           >
             {part}
           </a>
@@ -155,9 +155,9 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
           <a
             key={i}
             href={`tel:${cleanNumber}`}
-            className="font-mono font-bold text-sky-700 hover:text-sky-900 bg-sky-50 px-2.5 py-0.5 rounded-lg border border-sky-200/80 inline-flex items-center gap-1.5 dir-ltr transition-colors"
+            className="font-mono font-bold text-amber-800 hover:text-amber-950 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200/80 inline-flex items-center gap-1.5 dir-ltr transition-colors"
           >
-            <Phone className="w-3 h-3 text-sky-600 inline shrink-0" />
+            <Phone className="w-3 h-3 text-amber-600 inline shrink-0" />
             <span>{part.trim()}</span>
           </a>
         );
@@ -179,7 +179,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         return (
           <h3
             key={idx}
-            className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 mt-10 mb-5 flex items-center gap-3 border-s-4 border-purple-600 ps-3 sm:ps-4"
+            className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 mt-10 mb-5 flex items-center gap-3 border-s-4 border-amber-600 ps-3 sm:ps-4"
           >
             <span>{renderInline(trimmed.replace('### ', ''))}</span>
           </h3>
@@ -199,7 +199,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         return (
           <blockquote
             key={idx}
-            className="p-6 sm:p-8 my-8 rounded-3xl bg-gradient-to-r from-purple-50 via-sky-50/70 to-purple-50 border-s-4 border-purple-600 text-purple-950 font-semibold italic text-base sm:text-lg lg:text-xl leading-relaxed sm:leading-loose shadow-xs"
+            className="p-6 sm:p-8 my-8 rounded-3xl bg-gradient-to-r from-amber-50/90 via-amber-50/40 to-amber-100/50 border-s-4 border-amber-600 text-slate-900 font-semibold italic text-base sm:text-lg lg:text-xl leading-relaxed sm:leading-loose shadow-xs"
           >
             {renderInline(trimmed.replace('> ', ''))}
           </blockquote>
@@ -240,7 +240,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto flex flex-col animate-in fade-in duration-200 selection:bg-purple-200 selection:text-purple-900">
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto flex flex-col animate-in fade-in duration-200 selection:bg-amber-200 selection:text-amber-950">
       {/* Sticky Top Header Bar */}
       <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md text-white px-4 sm:px-8 py-3.5 border-b border-slate-800 flex items-center justify-between shadow-md">
         {/* Back / Close button */}
@@ -254,12 +254,12 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
 
         {/* Section Badge & Category */}
         <div className="hidden sm:flex items-center gap-3">
-          <span className="px-3.5 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-400/30">
+          <span className="px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30">
             {isAr ? article.categoryAr : article.categoryEn}
           </span>
           <span className="text-slate-400 text-xs">•</span>
           <span className="flex items-center gap-1.5 text-xs text-slate-300">
-            <Clock className="w-3.5 h-3.5 text-purple-400" />
+            <Clock className="w-3.5 h-3.5 text-amber-400" />
             <span>{article.readTime}</span>
           </span>
         </div>
@@ -288,18 +288,18 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
       <main className="flex-1 max-w-5xl mx-auto w-full px-5 sm:px-8 lg:px-12 py-8 sm:py-14 pb-48 sm:pb-56 space-y-10 sm:space-y-12">
         {/* Article Titles & Meta */}
         <div className="space-y-4 sm:space-y-6">
-          <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-purple-700">
-            <span className="px-3 py-1 rounded-full bg-purple-50 border border-purple-200">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-amber-800">
+            <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200">
               {isAr ? article.categoryAr : article.categoryEn}
             </span>
             <span className="text-slate-400">•</span>
             <span className="flex items-center gap-1.5 text-slate-600">
-              <Calendar className="w-3.5 h-3.5 text-sky-600" />
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
               <span>{article.publishedDate}</span>
             </span>
             <span className="text-slate-400">•</span>
             <span className="flex items-center gap-1.5 text-slate-600">
-              <Clock className="w-3.5 h-3.5 text-purple-600" />
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
               <span>{article.readTime}</span>
             </span>
           </div>
@@ -308,12 +308,12 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
             {isAr ? article.titleAr : article.titleEn}
           </h1>
 
-          <p className="text-lg sm:text-2xl font-semibold text-purple-800 leading-relaxed sm:leading-relaxed">
+          <p className="text-lg sm:text-2xl font-semibold text-amber-900/90 leading-relaxed sm:leading-relaxed">
             {isAr ? article.subtitleAr : article.subtitleEn}
           </p>
 
           <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 pt-2 border-t border-slate-100">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-200 to-sky-200 flex items-center justify-center font-bold text-purple-800 text-xs">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-100">
               ن
             </div>
             <div>
@@ -375,7 +375,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                   onClick={() => setActiveImageIndex(idx)}
                   className={`relative w-24 h-20 sm:w-28 sm:h-22 rounded-2xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                     activeImageIndex === idx
-                      ? 'border-purple-600 scale-105 shadow-md ring-2 ring-purple-300'
+                      ? 'border-amber-600 scale-105 shadow-md ring-2 ring-amber-300'
                       : 'border-slate-200 opacity-60 hover:opacity-100'
                   }`}
                 >
@@ -388,10 +388,10 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
 
         {/* Key Metrics Grid - Spacious & Prominent */}
         {article.metrics && article.metrics.length > 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-gradient-to-br from-purple-50/80 via-white to-sky-50/80 p-6 sm:p-8 rounded-3xl border border-purple-100 shadow-xs">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 p-6 sm:p-8 rounded-3xl border border-amber-200/80 shadow-xs">
             {article.metrics.map((m, idx) => (
-              <div key={idx} className="text-center p-3 sm:p-4 rounded-2xl bg-white/80 border border-purple-100/60 shadow-2xs">
-                <span className="block text-2xl sm:text-3xl lg:text-4xl font-black text-purple-800 tracking-tight">
+              <div key={idx} className="text-center p-3 sm:p-4 rounded-2xl bg-white/80 border border-amber-100 shadow-2xs">
+                <span className="block text-2xl sm:text-3xl lg:text-4xl font-black text-amber-800 tracking-tight">
                   {m.value}
                 </span>
                 <span className="block text-xs sm:text-sm text-slate-600 mt-1 font-semibold">
@@ -429,10 +429,10 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         {/* DEDICATED INTERACTIVE CONTACT & COMMUNICATION SUITE (When Contact Section) */}
         {/* ========================================================================= */}
         {article.sectionKey === 'contact' && (
-          <section className="pt-8 space-y-8 border-t-2 border-purple-100">
+          <section className="pt-8 space-y-8 border-t-2 border-amber-200">
             <div className="text-center space-y-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                 <span>{isAr ? 'قنوات الاتصال المباشرة والموثوقة' : 'Direct Verified Contact Channels'}</span>
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
@@ -574,22 +574,22 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
               </div>
 
               {/* 3. Official Email Card */}
-              <div className="bg-gradient-to-br from-purple-50 via-white to-purple-50/40 p-6 rounded-3xl border-2 border-purple-200/80 shadow-md flex flex-col justify-between space-y-5">
+              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/80 p-6 rounded-3xl border-2 border-amber-500/40 shadow-xl flex flex-col justify-between space-y-5 text-white">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center shadow-md">
                       <Mail className="w-6 h-6" />
                     </div>
-                    <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-bold">
+                    <span className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold">
                       {isAr ? 'البريد الرسمي' : 'Official Email'}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-slate-950">
+                    <h3 className="text-lg font-bold text-white">
                       {isAr ? 'البريد الإلكتروني للشركات والمناقصات' : 'Corporate Email Inquiries'}
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
                       {isAr
                         ? 'لإرسال كراسات الشروط، عروض الأسعار الرسمية، والمراسلات المؤسسية المعتمدة.'
                         : 'For corporate procurement tenders, formal RFQs, and enterprise contracts.'}
@@ -597,25 +597,25 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    <div className="p-3 bg-white rounded-2xl border border-purple-200 flex items-center justify-between">
-                      <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm dir-ltr">
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 flex items-center justify-between">
+                      <span className="font-mono font-bold text-white text-xs sm:text-sm dir-ltr">
                         info@noonwalqalam.com
                       </span>
                       <button
                         onClick={() => handleCopy('info@noonwalqalam.com', isAr ? 'البريد الإلكتروني' : 'Email')}
-                        className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 transition-colors cursor-pointer"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="p-3 bg-white rounded-2xl border border-purple-200 flex items-center justify-between">
-                      <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm dir-ltr">
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 flex items-center justify-between">
+                      <span className="font-mono font-bold text-white text-xs sm:text-sm dir-ltr">
                         sales@noonwalqalam.com
                       </span>
                       <button
                         onClick={() => handleCopy('sales@noonwalqalam.com', isAr ? 'البريد الإلكتروني' : 'Email')}
-                        className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 transition-colors cursor-pointer"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
@@ -625,7 +625,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
 
                 <a
                   href="mailto:info@noonwalqalam.com?subject=Inquiry%20from%20Noon%20and%20Pen%20Website"
-                  className="w-full py-3.5 px-5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Mail className="w-5 h-5" />
                   <span>{isAr ? 'إرسال رسالة بريد إلكتروني' : 'Send Email Inquiry'}</span>
@@ -684,22 +684,22 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         )}
       </main>
 
-      {/* Sticky Bottom Action Bar with High-Impact CTAs */}
-      <footer className="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 py-4 px-4 sm:px-8 shadow-lg">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Sticky Bottom Action Bar with High-Impact CTAs - Sleeker & More Compact */}
+      <footer className="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2.5 sm:py-3 px-3 sm:px-6 shadow-md">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <div className="hidden sm:block">
-            <span className="font-bold text-slate-900 text-sm block">
+            <span className="font-bold text-slate-900 text-xs block">
               {isAr ? 'نُون والقَلَم – الطباعة والتصميم الفاخر' : 'Noon & Pen Atelier'}
             </span>
-            <span className="text-xs text-slate-500">
+            <span className="text-[11px] text-slate-500">
               {isAr ? 'صُنعت بحرفية وعناية في ورشاتنا في بغداد' : 'Handcrafted with precision in Baghdad'}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => setSelectedArticleId(null)}
-              className="flex-1 sm:flex-none px-5 py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-bold transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 sm:py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer shadow-2xs"
             >
               {isAr ? 'إغلاق المقال' : 'Close Article'}
             </button>
@@ -709,19 +709,19 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                 href="https://wa.me/9647800000000"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[11px] sm:text-xs font-bold shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <MessageCircle className="w-4 h-4" />
+                <MessageCircle className="w-3.5 h-3.5" />
                 <span>{isAr ? 'بدء محادثة واتساب الآن' : 'Chat on WhatsApp'}</span>
-                <ArrowUpRight className="w-4 h-4" />
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </a>
             ) : (
               <button
                 onClick={handleActionClick}
-                className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-600 hover:from-purple-700 hover:to-sky-700 text-white text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2 rounded-lg bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 text-[11px] sm:text-xs font-black shadow-sm shadow-amber-500/20 hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span>{isAr ? article.actionTextAr || 'بدء التخصيص أو الطلب' : article.actionTextEn || 'Get Started'}</span>
-                <ArrowUpRight className="w-4 h-4" />
+                <span>{isAr ? article.actionTextAr || 'طلب تسعير أو تصميم مخصص' : article.actionTextEn || 'Get Started'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             )}
           </div>

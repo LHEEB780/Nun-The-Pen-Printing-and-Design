@@ -16,18 +16,24 @@ import {
   ArrowRight,
   ArrowLeft,
   Flame,
+  Briefcase,
+  Heart,
+  MoreVertical,
+  Award,
 } from 'lucide-react';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useOffersStore } from '../../store/useOffersStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
 import { LanguageToggle } from './LanguageToggle';
+import { CurrencyToggle } from './CurrencyToggle';
 
 import { SpecialtyId } from '../home/SpecialtyGatewaysSection';
 
 interface NavbarProps {
   onOpenCustomizer: (productId?: string) => void;
-  currentView: 'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio';
-  onNavigate: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio', specialtyId?: SpecialtyId) => void;
+  currentView: 'home' | 'shop' | 'product' | 'checkout' | 'order-confirmation' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'partners';
+  onNavigate: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'partners', specialtyId?: SpecialtyId) => void;
   onOpenAuthModal: () => void;
   activeSpecialtyId?: SpecialtyId;
 }
@@ -69,8 +75,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     digitalProofs,
     hasProofNotification,
     dismissProofNotification,
+    wishlist,
+    setIsWishlistOpen,
+    loyaltyPoints,
   } = useAuthStore();
   const { getFeaturedOffer, getActiveOffers } = useOffersStore();
+  const { formatPrice } = useCurrencyStore();
   const featuredOffer = getFeaturedOffer();
   const activeOffersCount = getActiveOffers().length;
 
@@ -80,12 +90,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isAr = i18n.language === 'ar';
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Lock body scroll when mobile menu is open to prevent scroll conflicts
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const handleLinkClick = (href: string) => {
     setMobileMenuOpen(false);
@@ -125,7 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <header className="fixed top-0 inset-x-0 z-40 transition-all duration-300">
+    <header className="fixed top-0 inset-x-0 z-40 transition-colors duration-200">
       {/* Slim, Dismissible Promotional Banner (Top of Navbar - Fully Interactive) */}
       {isPromoBannerVisible && (
         <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 text-amber-200 border-b border-amber-500/25 px-2.5 sm:px-3 py-1.5 transition-all text-[11px] sm:text-xs shadow-xs select-none">
@@ -164,23 +193,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                   isAr ? (
                     <>
                       <strong className="text-amber-300 font-bold">{featuredOffer.discountBadgeAr}</strong>: {featuredOffer.titleAr} +{' '}
-                      <span className="text-emerald-300 font-semibold">شحن مجاني لكافة المحافظات</span> للطلبات فوق 150,000 د.ع
+                      <span className="text-emerald-300 font-semibold">شحن مجاني لكافة المحافظات</span> للطلبات فوق {formatPrice(150000, { isAr: true })}
                     </>
                   ) : (
                     <>
                       <strong className="text-amber-300 font-bold">{featuredOffer.discountBadgeEn}</strong>: {featuredOffer.titleEn} +{' '}
-                      <span className="text-emerald-300 font-semibold">Free nationwide delivery</span> on orders over 150K IQD!
+                      <span className="text-emerald-300 font-semibold">Free nationwide delivery</span> on orders over {formatPrice(150000, { isAr: false })}!
                     </>
                   )
                 ) : isAr ? (
                   <>
                     <strong className="text-amber-300 font-bold">خصم يصل إلى 33%</strong> على علب الكرتون الفاخرة وكروت البصمة +{' '}
-                    <span className="text-emerald-300 font-semibold">شحن مجاني لكافة المحافظات</span> للطلبات فوق 150,000 د.ع
+                    <span className="text-emerald-300 font-semibold">شحن مجاني لكافة المحافظات</span> للطلبات فوق {formatPrice(150000, { isAr: true })}
                   </>
                 ) : (
                   <>
                     <strong className="text-amber-300 font-bold">Up to 33% off</strong> luxury rigid boxes & foil cards +{' '}
-                    <span className="text-emerald-300 font-semibold">Free nationwide delivery</span> on orders over 150,000 IQD!
+                    <span className="text-emerald-300 font-semibold">Free nationwide delivery</span> on orders over {formatPrice(150000, { isAr: false })}!
                   </>
                 )}
               </p>
@@ -215,10 +244,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Main Navbar Bar */}
       <div
-        className={`transition-all duration-300 ${
-          isScrolled
-            ? 'bg-white/95 backdrop-blur-md shadow-xs border-b border-slate-100 py-2.5 sm:py-3'
-            : 'bg-white/85 backdrop-blur-xs py-3.5 sm:py-4 border-b border-transparent'
+        className={`transition-colors duration-200 ${
+          isScrolled || mobileMenuOpen
+            ? 'bg-white shadow-sm border-b border-slate-100 py-2 sm:py-3'
+            : 'bg-white/95 py-2.5 sm:py-3.5 border-b border-slate-100/50'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -260,10 +289,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="button"
                   className={`text-xs xl:text-sm font-medium transition-colors relative py-1 cursor-pointer flex items-center gap-1 xl:gap-1.5 whitespace-nowrap ${
                     isCurrent
-                      ? 'text-purple-700 font-bold after:w-full after:h-0.5 after:bg-purple-600 after:absolute after:bottom-0 after:start-0'
+                      ? 'text-amber-800 font-black after:w-full after:h-0.5 after:bg-amber-600 after:absolute after:bottom-0 after:start-0'
                       : link.isOffers
                       ? 'text-amber-800 font-bold hover:text-amber-900'
-                      : 'text-slate-600 hover:text-purple-700 hover:after:w-full after:w-0 after:h-0.5 after:bg-purple-600 after:absolute after:bottom-0 after:start-0 after:transition-all after:duration-200'
+                      : 'text-slate-600 hover:text-amber-800 hover:after:w-full after:w-0 after:h-0.5 after:bg-amber-600 after:absolute after:bottom-0 after:start-0 after:transition-all after:duration-200'
                   }`}
                 >
                   {link.isOffers && <Flame className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />}
@@ -278,12 +307,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Action Tools: Smaller, refined buttons ordered by size */}
+          {/* Action Tools: Smaller, refined buttons ordered logically */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {/* 1. Single Opposite-Language Button: compact 34px height */}
-            <LanguageToggle variant="single" />
+            {/* 1. Request Custom Design CTA (Sleek, compact luxury button) */}
+            <button
+              onClick={() => {
+                const defaultProdId =
+                  activeSpecialtyId === 'boxes'
+                    ? 'prod-pizza-box'
+                    : activeSpecialtyId === 'cards'
+                    ? 'prod-crystal-acrylic-card'
+                    : activeSpecialtyId === 'occasions'
+                    ? 'prod-wedding-guestbook'
+                    : activeSpecialtyId === 'led'
+                    ? 'prod-airplane-led'
+                    : 'prod-pizza-box';
+                onOpenCustomizer(defaultProdId);
+              }}
+              type="button"
+              className="hidden md:inline-flex items-center gap-1 h-[30px] sm:h-[32px] px-2.5 sm:px-3 rounded-lg text-[10px] sm:text-[11px] font-black bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 hover:from-amber-800 hover:to-amber-900 text-white shadow-2xs hover:shadow-xs hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer shrink-0"
+              title={isAr ? 'طلب وتجهيز تصميم مخصص' : 'Request Custom Design'}
+            >
+              <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+              <span>{isAr ? 'طلب تصميم 🎨' : 'Custom Design 🎨'}</span>
+            </button>
 
-            {/* 2. Notification Bell (Icon-only: 34px x 34px) */}
+            {/* 2. Notification Bell (Icon-only: 30px-32px) */}
             <div className="relative">
               <button
                 onClick={() => {
@@ -291,7 +340,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   if (userMenuOpen) setUserMenuOpen(false);
                 }}
                 type="button"
-                className={`relative h-[34px] w-[34px] min-w-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                className={`relative h-[30px] w-[30px] sm:h-[32px] sm:w-[32px] min-w-[30px] sm:min-w-[32px] rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
                   pendingProofsCount > 0
                     ? 'border-amber-400 bg-amber-50 text-amber-900 shadow-2xs'
                     : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-amber-950 shadow-2xs hover:shadow-xs'
@@ -299,9 +348,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-label={isAr ? 'التنبيهات وبروفات التصاميم' : 'Design Proof Notifications'}
                 title={isAr ? 'بروفات التصاميم والتنبيهات' : 'Notifications'}
               >
-                <Bell className={`w-4 h-4 ${pendingProofsCount > 0 ? 'text-amber-700' : 'text-slate-700'}`} />
+                <Bell className={`w-3.5 h-3.5 ${pendingProofsCount > 0 ? 'text-amber-700' : 'text-slate-700'}`} />
                 {pendingProofsCount > 0 && (
-                  <span className="absolute -top-1 -end-1 w-4 h-4 bg-amber-500 text-slate-950 text-[9px] font-black rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                  <span className="absolute -top-1 -end-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-amber-500 text-slate-950 text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center animate-bounce shadow-xs">
                     {pendingProofsCount}
                   </span>
                 )}
@@ -431,23 +480,43 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* 3. Shopping Cart (Icon-only: 34px x 34px) */}
+            {/* 3. Wishlist Favorites (Icon-only: 30px-32px) */}
+            <button
+              onClick={() => setIsWishlistOpen(true)}
+              type="button"
+              className={`relative h-[30px] w-[30px] sm:h-[32px] sm:w-[32px] min-w-[30px] sm:min-w-[32px] rounded-lg border flex items-center justify-center transition-colors cursor-pointer shadow-2xs hover:shadow-xs ${
+                wishlist.length > 0
+                  ? 'border-rose-200 bg-rose-50/70 text-rose-600 hover:bg-rose-100'
+                  : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-rose-600'
+              }`}
+              aria-label={isAr ? 'قائمة الرغبات والمفضلة' : 'Wishlist'}
+              title={isAr ? `قائمة الرغبات والمفضلة (${wishlist.length})` : `Wishlist & Favorites (${wishlist.length})`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${wishlist.length > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-700'}`} />
+              {wishlist.length > 0 && (
+                <span className="absolute -top-1 -end-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-rose-500 text-white text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
+                  {wishlist.length}
+                </span>
+              )}
+            </button>
+
+            {/* 4. Shopping Cart (Icon-only: 30px-32px) */}
             <button
               onClick={() => setCartOpen(true)}
               type="button"
-              className="relative h-[34px] w-[34px] min-w-[34px] rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-purple-700 shadow-2xs hover:shadow-xs transition-colors flex items-center justify-center cursor-pointer"
+              className="relative h-[30px] w-[30px] sm:h-[32px] sm:w-[32px] min-w-[30px] sm:min-w-[32px] rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-amber-800 shadow-2xs hover:shadow-xs transition-colors flex items-center justify-center cursor-pointer"
               aria-label={t('nav.cart')}
               title={isAr ? 'سلة المشتريات والطلبات' : 'Shopping Cart'}
             >
-              <ShoppingBag className="w-4 h-4 text-slate-700 hover:text-purple-700 transition-colors" />
+              <ShoppingBag className="w-3.5 h-3.5 text-slate-700 hover:text-amber-800 transition-colors" />
               {totalCartCount > 0 && (
-                <span className="absolute -top-1 -end-1 w-4 h-4 bg-purple-600 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-scale shadow-xs">
+                <span className="absolute -top-1 -end-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-amber-600 text-white text-[8px] sm:text-[9px] font-black rounded-full flex items-center justify-center animate-scale shadow-xs">
                   {totalCartCount}
                 </span>
               )}
             </button>
 
-            {/* 4. User Account / Sign In (Medium Button: 34px height) */}
+            {/* 5. User Account / Sign In (Compact: 30px-32px) */}
             {isAuthenticated && user ? (
               <div className="relative">
                 <button
@@ -456,13 +525,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     if (notificationMenuOpen) setNotificationMenuOpen(false);
                   }}
                   type="button"
-                  className="h-[34px] px-2 sm:px-2.5 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs"
+                  className="h-[30px] sm:h-[32px] px-1.5 sm:px-2 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs"
                   title={isAr ? 'حساب العميل والطلبات' : 'Customer Account'}
                 >
-                  <div className="w-5 h-5 rounded-md bg-amber-900 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                  <div className="w-4.5 h-4.5 rounded-md bg-amber-900 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
                     {user.fullName.charAt(0)}
                   </div>
-                  <span className="text-[11px] font-bold text-slate-800 hidden sm:inline max-w-[80px] truncate">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 hidden sm:inline max-w-[75px] truncate">
                     {user.fullName.split(' ')[0]}
                   </span>
                   {pendingProofsCount > 0 && (
@@ -505,15 +574,63 @@ export const Navbar: React.FC<NavbarProps> = ({
                       )}
                     </button>
 
+                    {/* Wishlist item in user menu */}
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        setIsWishlistOpen(true);
+                      }}
+                      type="button"
+                      className="w-full text-start px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-900 flex items-center justify-between cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+                        <span>{isAr ? 'قائمة الرغبات والمفضلة' : 'Wishlist & Favorites'}</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-mono font-bold">
+                        {wishlist.length}
+                      </span>
+                    </button>
+
+                    {/* Loyalty Points item in user menu */}
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate('dashboard');
+                      }}
+                      type="button"
+                      className="w-full text-start px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-amber-50 hover:text-amber-900 flex items-center justify-between cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-amber-600" />
+                        <span>{isAr ? 'نقاط الولاء والمكافآت' : 'Loyalty Points'}</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-mono font-bold">
+                        {loyaltyPoints.toLocaleString()}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate('partners');
+                      }}
+                      type="button"
+                      className="w-full text-start px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
+                    >
+                      <Briefcase className="w-4 h-4 text-amber-700" />
+                      <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
+                    </button>
+
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
                         onNavigate('admin');
                       }}
                       type="button"
-                      className="w-full text-start px-4 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
+                      className="w-full text-start px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
                     >
-                      <ShieldAlert className="w-4 h-4 text-purple-600" />
+                      <ShieldAlert className="w-4 h-4 text-amber-600" />
                       <span>{isAr ? 'لوحة الإدارة (RBAC Studio)' : 'Admin Dashboard'}</span>
                     </button>
 
@@ -535,139 +652,249 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onOpenAuthModal}
                 type="button"
-                className="h-[34px] px-2 sm:px-2.5 rounded-lg border border-purple-200/90 bg-purple-50/80 hover:bg-purple-100 text-purple-900 text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs shrink-0"
+                className="h-[30px] sm:h-[32px] px-2 sm:px-2.5 rounded-lg border border-amber-300/80 bg-amber-50/80 hover:bg-amber-100 text-amber-950 text-[10px] sm:text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-xs shrink-0"
                 title={isAr ? 'تسجيل الدخول / إنشاء حساب' : 'Sign In'}
               >
-                <User className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                <User className="w-3.5 h-3.5 text-amber-800 shrink-0" />
                 <span className="hidden sm:inline">{isAr ? 'تسجيل الدخول' : 'Sign In'}</span>
               </button>
             )}
 
-            {/* 5. Request Custom Design CTA (Largest Button: 34px height, sleek luxury CTA) */}
-            <button
-              onClick={() => {
-                const defaultProdId =
-                  activeSpecialtyId === 'boxes'
-                    ? 'prod-pizza-box'
-                    : activeSpecialtyId === 'cards'
-                    ? 'prod-crystal-acrylic-card'
-                    : activeSpecialtyId === 'occasions'
-                    ? 'prod-wedding-guestbook'
-                    : activeSpecialtyId === 'led'
-                    ? 'prod-airplane-led'
-                    : 'prod-pizza-box';
-                onOpenCustomizer(defaultProdId);
-              }}
-              type="button"
-              className="hidden sm:inline-flex items-center gap-1.5 h-[34px] px-3 sm:px-3.5 rounded-lg text-[11px] sm:text-xs font-black bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 hover:from-amber-800 hover:to-amber-900 text-white shadow-xs hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shrink-0"
-              title={isAr ? 'طلب وتجهيز تصميم مخصص' : 'Request Custom Design'}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-              <span>{isAr ? 'طلب وتجهيز تصميم 🎨' : 'Request Custom Design 🎨'}</span>
-            </button>
-
-            {/* 6. Mobile Hamburger Toggle (Side Menu Trigger - 34px x 34px) */}
+            {/* 6. Sidebar Dots Button (زر النقاط في جانب الموقع: تفضيلات العملة واللغة) */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               type="button"
-              className="lg:hidden h-[34px] w-[34px] min-w-[34px] rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-800 flex items-center justify-center cursor-pointer shadow-2xs shrink-0 transition-transform active:scale-95"
-              aria-label={isAr ? 'فتح القائمة الجانبية' : 'Toggle navigation menu'}
-              title={isAr ? 'القائمة الجانبية' : 'Navigation Menu'}
+              className="h-[30px] w-[30px] sm:h-[32px] sm:w-[32px] min-w-[30px] sm:min-w-[32px] rounded-lg border border-amber-200/90 bg-amber-50/60 hover:bg-amber-100/80 text-amber-950 flex items-center justify-center cursor-pointer shadow-2xs shrink-0 transition-transform active:scale-95"
+              aria-label={isAr ? 'القائمة الجانبية وتفضيلات اللغة والعملة' : 'Side Menu & Preferences'}
+              title={isAr ? 'القائمة الجانبية (تغيير العملة واللغة)' : 'Side Menu (Currency & Language)'}
             >
-              {mobileMenuOpen ? <X className="w-4 h-4 text-amber-950" /> : <Menu className="w-4 h-4 text-amber-950" />}
+              {mobileMenuOpen ? (
+                <X className="w-4 h-4 text-amber-950" />
+              ) : (
+                <MoreVertical className="w-4 h-4 text-amber-950" />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
+        {/* Slide-over Side Drawer ("الشريط الجانبي النقاط في جانب موقع") */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-3 pt-3 pb-4 border-t border-slate-100 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl">
-            {/* Mobile Language & Direction Switcher */}
-            <div className="mb-3">
-              <LanguageToggle variant="expanded" />
-            </div>
+          <>
+            {/* Soft Backdrop to close when tapping outside */}
+            <div
+              className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 transition-opacity"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
 
-            <div className="flex flex-col gap-2">
-              {navLinks.map((link) => (
-                <button
-                  key={link.href}
-                  onClick={() => handleLinkClick(link.href)}
-                  type="button"
-                  className={`w-full text-start px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer flex items-center justify-between ${
-                    link.isOffers
-                      ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-950 font-bold border border-amber-200'
-                      : 'text-slate-700 hover:bg-purple-50 hover:text-purple-700'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    {link.isOffers && <Flame className="w-4 h-4 text-amber-600 animate-pulse" />}
-                    <span>{link.label}</span>
-                  </span>
-                  {link.isOffers && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
-                      {isAr ? 'تخفيضات 33%' : '33% OFF'}
+            {/* Side Drawer Panel */}
+            <div
+              className="fixed inset-y-0 end-0 z-50 w-80 sm:w-88 max-w-[88vw] bg-white shadow-2xl flex flex-col justify-between overflow-y-auto overscroll-contain border-s border-amber-200/80"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              <div>
+                {/* Drawer Header */}
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-50/80 to-amber-100/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-amber-900 text-white flex items-center justify-center font-bold text-sm shadow-2xs">
+                      نُ
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-amber-950">
+                        {isAr ? 'خيارات وتفضيلات المتجر' : 'Store Options & Preferences'}
+                      </h3>
+                      <p className="text-[10px] text-amber-800">
+                        {isAr ? 'اللغة والعملة والروابط السريعة' : 'Language, Currency & Links'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    type="button"
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title={isAr ? 'إغلاق القائمة' : 'Close Menu'}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Primary Feature: Language & Currency Switchers in Sidebar */}
+                <div className="p-4 bg-amber-50/40 border-b border-amber-100/90 space-y-3">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-amber-900">
+                    <span className="flex items-center gap-1.5">
+                      <span>🌐</span>
+                      <span>{isAr ? 'تفضيلات العرض والعملة' : 'Display & Currency'}</span>
                     </span>
-                  )}
-                </button>
-              ))}
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950 font-bold">
+                      {isAr ? 'تحديث فوري' : 'Live rates'}
+                    </span>
+                  </div>
 
-              {isAuthenticated ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onNavigate('dashboard');
-                    }}
-                    type="button"
-                    className="w-full text-start px-3 py-2 rounded-lg text-sm font-bold text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2"
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    <span>{isAr ? 'لوحة التحكم والطلبات' : 'Customer Dashboard'}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onNavigate('admin');
-                    }}
-                    type="button"
-                    className="w-full text-start px-3 py-2 rounded-lg text-sm font-bold text-indigo-700 hover:bg-indigo-50 transition-colors flex items-center gap-2"
-                  >
-                    <ShieldAlert className="w-4 h-4 text-indigo-600" />
-                    <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard'}</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Admin panel is auth-guarded — hidden from logged-out visitors */}
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onOpenAuthModal();
-                    }}
-                    type="button"
-                    className="w-full text-start px-3 py-2 rounded-lg text-sm font-bold text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-2"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>{isAr ? 'تسجيل الدخول / حساب جديد' : 'Sign In / Sign Up'}</span>
-                  </button>
-                </>
-              )}
+                  <div className="space-y-2.5">
+                    {/* Language Switcher */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-500 mb-1">
+                        {isAr ? 'لغة الموقع:' : 'Language:'}
+                      </p>
+                      <LanguageToggle variant="expanded" />
+                    </div>
 
-              <div className="pt-3 mt-2 border-t border-slate-100 flex flex-col gap-2">
+                    {/* Currency Switcher */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-500 mb-1">
+                        {isAr ? 'عملة المتجر والأسعار:' : 'Currency & Pricing:'}
+                      </p>
+                      <CurrencyToggle variant="expanded" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation Links */}
+                <div className="p-4 flex flex-col gap-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
+                    {isAr ? 'صفحات المتجر' : 'Navigation'}
+                  </p>
+                  {navLinks.map((link) => (
+                    <button
+                      key={link.href}
+                      onClick={() => handleLinkClick(link.href)}
+                      type="button"
+                      className={`w-full text-start px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-between ${
+                        link.isOffers
+                          ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-950 border border-amber-200'
+                          : 'text-slate-700 hover:bg-amber-50 hover:text-amber-900'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {link.isOffers && <Flame className="w-4 h-4 text-amber-600 animate-pulse" />}
+                        <span>{link.label}</span>
+                      </span>
+                      {link.isOffers && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
+                          {isAr ? 'عروض 33%' : '33% OFF'}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+
+                  {/* Dashboard / User Shortcuts */}
+                  <div className="pt-3 mt-2 border-t border-slate-100 flex flex-col gap-1.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
+                      {isAr ? 'الحساب والخدمات' : 'Account & Portals'}
+                    </p>
+
+                    {isAuthenticated ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            onNavigate('dashboard');
+                          }}
+                          type="button"
+                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-900 transition-colors flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <LayoutDashboard className="w-4 h-4 text-amber-700" />
+                            <span>{isAr ? 'لوحة الحساب والبروفات' : 'Customer Dashboard'}</span>
+                          </div>
+                          {pendingProofsCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[9px] font-black">
+                              {pendingProofsCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            setIsWishlistOpen(true);
+                          }}
+                          type="button"
+                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-900 transition-colors flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+                            <span>{isAr ? 'قائمة الرغبات والمفضلة' : 'Wishlist & Favorites'}</span>
+                          </div>
+                          <span className="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-mono font-bold">
+                            {wishlist.length}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            onNavigate('dashboard');
+                          }}
+                          type="button"
+                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-900 transition-colors flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Award className="w-4 h-4 text-amber-600" />
+                            <span>{isAr ? 'نقاط الولاء والمكافآت' : 'Loyalty Points'}</span>
+                          </div>
+                          <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-mono font-bold">
+                            {loyaltyPoints.toLocaleString()}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            onNavigate('partners');
+                          }}
+                          type="button"
+                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-amber-950 bg-amber-50/70 hover:bg-amber-100 transition-colors flex items-center gap-2"
+                        >
+                          <Briefcase className="w-4 h-4 text-amber-700" />
+                          <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            onNavigate('admin');
+                          }}
+                          type="button"
+                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-amber-900 hover:bg-amber-50 transition-colors flex items-center gap-2"
+                        >
+                          <ShieldAlert className="w-4 h-4 text-amber-600" />
+                          <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard'}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          onOpenAuthModal();
+                        }}
+                        type="button"
+                        className="w-full text-start px-3.5 py-2.5 rounded-xl text-xs font-bold text-amber-950 bg-amber-50/80 hover:bg-amber-100 transition-colors flex items-center gap-2 border border-amber-200/80"
+                      >
+                        <User className="w-4 h-4 text-amber-800" />
+                        <span>{isAr ? 'تسجيل الدخول / إنشاء حساب جديد' : 'Sign In / Register'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Footer CTA */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50/60">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onOpenCustomizer();
                   }}
                   type="button"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-purple-600 to-sky-600 text-white shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-900 to-amber-950 hover:from-amber-800 hover:to-amber-900 text-white shadow-xs cursor-pointer transition-all"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  <span>{t('hero.ctaPrimary')}</span>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{isAr ? 'طلب وتجهيز تصميم مخصص 🎨' : 'Request Custom Design 🎨'}</span>
                 </button>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
       </div>

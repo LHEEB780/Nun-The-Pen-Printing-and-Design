@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useCartStore, PaymentMethod, ShippingInfo, OrderRecord } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useOffersStore } from '../../store/useOffersStore';
 import { useAdminStore } from '../../store/useAdminStore';
+import { useAffiliateStore } from '../../store/useAffiliateStore';
 import {
   ArrowRight,
   ArrowLeft,
@@ -24,6 +25,7 @@ import {
   Phone,
   User,
   Tag,
+  Award,
 } from 'lucide-react';
 
 interface CheckoutPageProps {
@@ -41,6 +43,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const { user } = useAuthStore();
   const { offers } = useOffersStore();
   const { addOrder: addAdminOrder } = useAdminStore();
+  const { validateReferralCode, getLinkedPartnerForClient, processOrderCommission } = useAffiliateStore();
 
   const subtotal = getSubtotal();
 
@@ -54,6 +57,43 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [address, setAddress] = useState(user?.address || '');
   const [deliveryType, setDeliveryType] = useState<'standard' | 'express'>('standard');
   const [notes, setNotes] = useState('');
+
+  // Sync with user profile on login or hydration
+  useEffect(() => {
+    if (user) {
+      setFullName((prev) => prev || user.fullName || '');
+      setPhone((prev) => prev || user.phone || '');
+      if (user.governorate) setGovernorate(user.governorate);
+      setAddress((prev) => prev || user.address || '');
+    }
+  }, [user]);
+
+  // Sales Partner / Business Development Representative Code State
+  const [partnerCodeInput, setPartnerCodeInput] = useState<string>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCode = urlParams.get('ref') || urlParams.get('partner') || urlParams.get('qr');
+        if (urlCode) return urlCode.trim();
+        const storedCode = localStorage.getItem('noon_applied_partner_code');
+        if (storedCode) return storedCode.trim();
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  });
+
+  // Check if client's phone is ALREADY linked in the lifetime affiliate store!
+  const linkedPartner = useMemo(() => {
+    return getLinkedPartnerForClient(phone);
+  }, [phone, getLinkedPartnerForClient]);
+
+  // Real-time verification of entered partner code
+  const partnerValidation = useMemo(() => {
+    if (!partnerCodeInput.trim()) return null;
+    return validateReferralCode(partnerCodeInput);
+  }, [partnerCodeInput, validateReferralCode]);
 
   // Promo code redemption (validated against active, non-expired seasonal offers)
   const [promoInput, setPromoInput] = useState('');
@@ -206,6 +246,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           paypal: { ar: 'باي بال (PayPal)', en: 'PayPal' },
         };
 
+        // Process Lifetime Recurring Commission Engine
+        const commissionResult = processOrderCommission({
+          orderId,
+          clientName: fullName,
+          clientPhone: phone,
+          subtotal,
+          items: items.map((it) => ({
+            productId: it.productId,
+            titleAr: it.titleAr,
+            quantity: it.quantity,
+            totalPrice: it.totalPrice,
+          })),
+          enteredCode: partnerCodeInput.trim(),
+        });
+
         const completedOrder: OrderRecord = {
           orderId,
           createdAt: new Date().toLocaleDateString(isAr ? 'ar-IQ' : 'en-US', {
@@ -224,6 +279,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             notes,
             deliveryType,
             shippingCost,
+            partnerCode: commissionResult.partner?.referralCode || (partnerCodeInput.trim() || undefined),
           },
           paymentMethod: selectedGateway,
           paymentDetails: {
@@ -237,10 +293,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           grandTotal,
           promoCode: appliedPromo?.code,
           promoDiscountIQD,
+          partnerCode: commissionResult.partner?.referralCode || (partnerCodeInput.trim() || undefined),
+          partnerId: commissionResult.partner?.id,
+          partnerName: commissionResult.partner?.fullName,
+          partnerEmployeeId: commissionResult.partner?.employeeId,
+          commissionAmountIQD: commissionResult.commissionAmount,
         };
 
         // Mirror the order into the Admin Workshop Pipeline so staff see it immediately
         addAdminOrder(completedOrder);
+
+        if (commissionResult.partnerAssigned) {
+          toast.success(
+            isAr
+              ? `تم تسجيل طلبك بنجاح وربطه برعاية شريكنا: ${commissionResult.partner?.fullName} (${commissionResult.partner?.employeeId})`
+              : `Order linked to certified partner: ${commissionResult.partner?.fullName}`
+          );
+        }
 
         setLastOrder(completedOrder);
         clearCart();
@@ -272,7 +341,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           <button
             onClick={onBackToCart}
             type="button"
-            className="px-6 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
           >
             {isAr ? 'العودة لكتالوج المنتجات' : 'Return to Catalog'}
           </button>
@@ -289,19 +358,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           <button
             onClick={onBackToCart}
             type="button"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-purple-700 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-amber-800 transition-colors cursor-pointer"
           >
             {isAr ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             <span>{isAr ? 'الرجوع للمتجر' : 'Back to Store'}</span>
           </button>
 
-          <span className="text-xs text-purple-700 font-bold bg-purple-100 px-3 py-1 rounded-full">
+          <span className="text-xs text-amber-900 font-bold bg-amber-100 border border-amber-200/80 px-3 py-1 rounded-full shadow-2xs">
             {isAr ? 'إتمام طلب التصنيع والتنفيذ' : 'Secure Fabrication Checkout'}
           </span>
         </div>
 
         {/* Multi-Step Wizard Indicator */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs mb-8">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-amber-100 shadow-xs mb-8">
           <div className="flex items-center justify-between relative">
             <div className="absolute top-1/2 -translate-y-1/2 inset-x-8 h-0.5 bg-slate-200 -z-0" />
             {steps.map((st) => (
@@ -309,7 +378,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <div
                   className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     currentStep === st.num
-                      ? 'bg-purple-600 text-white ring-4 ring-purple-100 shadow-md'
+                      ? 'bg-amber-600 text-white ring-4 ring-amber-100 shadow-md'
                       : currentStep > st.num
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-200 text-slate-600'
@@ -319,7 +388,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
                 <span
                   className={`text-xs mt-2 font-medium hidden sm:block ${
-                    currentStep === st.num ? 'text-purple-700 font-bold' : 'text-slate-500'
+                    currentStep === st.num ? 'text-amber-900 font-bold' : 'text-slate-500'
                   }`}
                 >
                   {isAr ? st.titleAr : st.titleEn}
@@ -333,8 +402,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         {currentStep === 1 && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-md space-y-8 animate-fade-in">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-purple-700 uppercase tracking-wider">
-                <Truck className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider">
+                <Truck className="w-4 h-4 text-amber-600" />
                 <span>{isAr ? 'الخطوة الأولى: تفاصيل التوصيل والاستلام' : 'Step 1: Shipping & Delivery Info'}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
@@ -374,7 +443,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder={isAr ? 'مثال: مصطفى حيدر الربيعي' : 'e.g. Mustafa Hayder'}
-                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                     />
                   </div>
                 </div>
@@ -391,7 +460,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+964 780 000 0000"
-                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                     />
                   </div>
                   <span className="text-[11px] text-slate-400 mt-1 block">
@@ -408,7 +477,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <select
                     value={governorate}
                     onChange={(e) => setGovernorate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     {governorates.map((gov) => (
                       <option key={gov.id} value={gov.nameAr}>
@@ -428,7 +497,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       onClick={() => setDeliveryType('standard')}
                       className={`p-2.5 rounded-xl border text-xs text-start transition-all cursor-pointer ${
                         deliveryType === 'standard'
-                          ? 'border-purple-600 bg-purple-50 font-bold text-purple-900 ring-1 ring-purple-600'
+                          ? 'border-amber-600 bg-amber-50 font-bold text-amber-950 ring-1 ring-amber-600'
                           : 'border-slate-200 bg-white text-slate-700'
                       }`}
                     >
@@ -442,7 +511,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       onClick={() => setDeliveryType('express')}
                       className={`p-2.5 rounded-xl border text-xs text-start transition-all cursor-pointer ${
                         deliveryType === 'express'
-                          ? 'border-purple-600 bg-purple-50 font-bold text-purple-900 ring-1 ring-purple-600'
+                          ? 'border-amber-600 bg-amber-50 font-bold text-amber-950 ring-1 ring-amber-600'
                           : 'border-slate-200 bg-white text-slate-700'
                       }`}
                     >
@@ -471,7 +540,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                         ? 'مثال: بغداد، حي المنصور، شارع 14 رمضان، فرع مطعم الساعة، عمارة الأفق، الطابق 2'
                         : 'e.g. Baghdad, Mansour, 14 Ramadan St, near Al-Saaha, Building 4'
                     }
-                    className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                    className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                   />
                 </div>
               </div>
@@ -485,8 +554,86 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder={isAr ? 'يرجى الاتصال قبل الوصول بساعة...' : 'Call 1 hour before arrival...'}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                 />
+              </div>
+
+              {/* Sales Partner / Business Development Representative Code (Optional) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50/70 via-stone-50 to-amber-50/40 border border-amber-200/90 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-amber-600" />
+                    <span>{isAr ? 'كود الشريك أو موظف المبيعات (إن وجد)' : 'Sales Partner / Rep Code (Optional)'}</span>
+                  </label>
+                  <span className="text-[10px] text-amber-900 bg-amber-100/80 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                    {isAr ? 'رعاية شريك' : 'Partner Care'}
+                  </span>
+                </div>
+
+                {linkedPartner ? (
+                  <div className="p-3 rounded-xl bg-white border border-amber-300 text-xs text-amber-950 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm">
+                        ✓
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs sm:text-sm">
+                          {isAr ? `حسابك مسجل برعاية شريكنا المعتمد: ${linkedPartner.fullName}` : `Serviced by our Certified Partner: ${linkedPartner.fullName}`}
+                        </p>
+                        <p className="text-[10px] text-amber-800 font-mono">
+                          {linkedPartner.employeeId} • كود: {linkedPartner.referralCode} ({linkedPartner.city})
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md shrink-0">
+                      {isAr ? 'شريك دائم مدى الحياة' : 'Lifetime Partner'}
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={partnerCodeInput}
+                        onChange={(e) => setPartnerCodeInput(e.target.value.toUpperCase())}
+                        placeholder={isAr ? 'مثال: NQ-AMB-01' : 'e.g. NQ-AMB-01'}
+                        className={`w-full ps-3.5 pe-10 py-2.5 rounded-xl border text-sm font-mono tracking-wider focus:outline-none focus:ring-2 bg-white ${
+                          partnerValidation?.valid
+                            ? 'border-emerald-500 focus:ring-emerald-500 text-emerald-950 font-bold'
+                            : partnerCodeInput.trim()
+                            ? 'border-rose-300 focus:ring-rose-400 text-rose-950'
+                            : 'border-slate-300 focus:ring-amber-500'
+                        }`}
+                      />
+                      {partnerValidation?.valid && (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 absolute top-1/2 -translate-y-1/2 end-3 pointer-events-none" />
+                      )}
+                    </div>
+
+                    {partnerValidation?.valid && partnerValidation.partner && (
+                      <p className="text-[11px] text-emerald-800 font-bold mt-1.5 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>
+                          {isAr
+                            ? `✓ شريك نون والقلم المعتمد: ${partnerValidation.partner.fullName} (${partnerValidation.partner.employeeId} • ${partnerValidation.partner.city})`
+                            : `✓ Verified Sales Partner: ${partnerValidation.partner.fullName}`}
+                        </span>
+                      </p>
+                    )}
+
+                    {partnerCodeInput.trim() && !partnerValidation?.valid && (
+                      <p className="text-[11px] text-rose-600 font-medium mt-1">
+                        {isAr ? partnerValidation?.message : 'Invalid sales partner code'}
+                      </p>
+                    )}
+
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      {isAr
+                        ? 'إذا كان أحد شركاء وممثلي مبيعات نون والقلم قد قام بخدمتك وتزويدك بهذا الكود، أدخله هنا لربط طلبك بمتابعته المباشرة.'
+                        : 'If a certified Noon & Pen sales representative assisted you, enter their code here.'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
@@ -495,7 +642,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </span>
                 <button
                   type="submit"
-                  className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md"
+                  className="px-7 py-3 rounded-xl bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md shadow-amber-900/15 transition-all"
                 >
                   <span>{isAr ? 'متابعة لمراجعة الطلب' : 'Proceed to Review'}</span>
                   {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
@@ -509,8 +656,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         {currentStep === 2 && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-md space-y-8 animate-fade-in">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-purple-700 uppercase tracking-wider">
-                <FileCheck className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider">
+                <FileCheck className="w-4 h-4 text-amber-600" />
                 <span>{isAr ? 'الخطوة الثانية: مراجعة المواصفات والبروفة' : 'Step 2: Order Specifications & Proof'}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
@@ -552,7 +699,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           </p>
                         )}
                         {item.customOptions.logoFileName && (
-                          <p className="text-purple-700 font-semibold font-mono">
+                          <p className="text-amber-800 font-semibold font-mono">
                             📎 {item.customOptions.logoFileName}
                           </p>
                         )}
@@ -636,21 +783,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-sm font-extrabold text-slate-900">
                 <span>{isAr ? 'المجموع الكلي المطلوب:' : 'Grand Total:'}</span>
-                <span className="text-purple-700 font-mono text-base">{grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}</span>
+                <span className="text-amber-900 font-mono text-lg font-black">{grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}</span>
               </div>
             </div>
 
             {/* Proof Approval Agreement Checkbox */}
-            <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 flex items-start gap-3">
+            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/90 flex items-start gap-3">
               <input
                 type="checkbox"
                 id="proof-approval"
                 checked={proofApproved}
                 onChange={(e) => setProofApproved(e.target.checked)}
-                className="w-4 h-4 text-purple-600 rounded mt-0.5 cursor-pointer"
+                className="w-4 h-4 text-amber-600 accent-amber-600 rounded mt-0.5 cursor-pointer"
               />
               <label htmlFor="proof-approval" className="text-xs text-slate-800 leading-relaxed cursor-pointer">
-                <strong>{isAr ? 'ضمان البروفة الرقمية المسبقة: ' : 'Digital Proof Guarantee: '}</strong>
+                <strong className="text-amber-950">{isAr ? 'ضمان البروفة الرقمية المسبقة: ' : 'Digital Proof Guarantee: '}</strong>
                 {isAr
                   ? 'أوافق على استلام صورة ومخطط ثلاثي الأبعاد للمنتج عبر واتساب لاعتماده رسمياً قبل بدء قص الأكريليك بالليزر والطباعة النهائية.'
                   : 'I agree to inspect and approve the digital 3D proof over WhatsApp before laser cutting & physical printing begins.'}
@@ -669,9 +816,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 type="button"
                 disabled={!proofApproved}
                 onClick={() => setCurrentStep(3)}
-                className={`px-6 py-3 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md ${
+                className={`px-7 py-3 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md ${
                   proofApproved
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    ? 'bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white shadow-amber-900/15'
                     : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                 }`}
               >
@@ -688,7 +835,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             {/* Processing Spinner Overlay */}
             {isProcessingPayment && (
               <div className="absolute inset-0 z-30 bg-white/95 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <Loader2 className="w-12 h-12 text-purple-600 animate-spin" />
+                <Loader2 className="w-12 h-12 text-amber-600 animate-spin" />
                 <h3 className="font-bold text-lg text-slate-900">
                   {isAr ? 'جارٍ معالجة الدفع...' : 'Processing Payment...'}
                 </h3>
@@ -702,8 +849,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             )}
 
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-purple-700 uppercase tracking-wider">
-                <CreditCard className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider">
+                <CreditCard className="w-4 h-4 text-amber-600" />
                 <span>{isAr ? 'الخطوة الثالثة: بوابات الدفع الإلكتروني المعتمدة' : 'Step 3: Secure Payment Gateways'}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
@@ -724,16 +871,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   onClick={() => setSelectedGateway('zaincash')}
                   className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
                     selectedGateway === 'zaincash'
-                      ? 'border-purple-600 bg-purple-50/70 ring-2 ring-purple-600 shadow-xs'
+                      ? 'border-amber-600 bg-amber-50/70 ring-2 ring-amber-600 shadow-xs'
                       : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold">
                         ZainCash
                       </span>
-                      <Phone className="w-4 h-4 text-purple-600" />
+                      <Phone className="w-4 h-4 text-amber-600" />
                     </div>
                     <span className="font-bold text-sm text-slate-900 block">
                       {isAr ? 'زين كاش العراق' : 'ZainCash Iraq'}
@@ -863,8 +1010,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
               {selectedGateway === 'zaincash' && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-xs font-bold text-purple-700">
-                    <Phone className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                    <Phone className="w-4 h-4 text-amber-600" />
                     <span>{isAr ? 'بوابة زين كاش (ZainCash Gateway):' : 'ZainCash Payment Terminal:'}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -929,7 +1076,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       </p>
                       <p className="text-[11px] text-slate-500">
                         {isAr ? 'المبلغ المطلوب: ' : 'Total: '}
-                        <strong className="text-purple-700 font-mono text-sm">{grandTotal.toLocaleString()} د.ع</strong>
+                        <strong className="text-amber-900 font-mono text-sm font-black">{grandTotal.toLocaleString()} د.ع</strong>
                       </p>
                       <div className="pt-1">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-700 rounded-lg text-[11px] font-bold">
@@ -1032,7 +1179,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <span className="text-xs text-slate-500 block">
                   {isAr ? 'المجموع النهائي مع الشحن والتغليف:' : 'Total Payable (Incl. Shipping):'}
                 </span>
-                <span className="text-2xl font-extrabold text-purple-700 font-mono">
+                <span className="text-2xl font-black text-amber-900 font-mono">
                   {grandTotal.toLocaleString()} {isAr ? 'د.ع' : 'IQD'}
                 </span>
               </div>
@@ -1049,9 +1196,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   type="button"
                   onClick={handleFinalSubmitPayment}
                   disabled={isProcessingPayment}
-                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-700 to-sky-600 hover:from-purple-800 hover:to-sky-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg hover:shadow-xl transition-all"
+                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-900/15 hover:shadow-xl transition-all"
                 >
-                  <Lock className="w-4 h-4" />
+                  <Lock className="w-4 h-4 text-amber-200" />
                   <span>{isAr ? 'تأكيد ودفع الطلب الآن' : 'Authorize & Place Order'}</span>
                 </button>
               </div>

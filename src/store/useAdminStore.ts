@@ -148,6 +148,40 @@ interface AdminStore {
   simulateABTraffic: (sampleSize?: number) => void;
   resetABTestStats: () => void;
   deployABWinner: (winnerId: 'var_a' | 'var_b') => void;
+
+  // AI Campaign ROAS & Attribution Sub-Dashboard
+  campaignRoasRecords: CampaignROASRecord[];
+  updateCampaignAdSpend: (campaignId: string, adSpendIQD: number) => void;
+  recordAttributedSale: (campaignId: string, orderId: string, revenue: number) => void;
+  addCampaignRoasRecord: (record: CampaignROASRecord) => void;
+  deleteCampaignRoasRecord: (id: string) => void;
+  simulateAttributionOrder: (campaignId: string) => void;
+}
+
+export interface CampaignROASRecord {
+  id: string;
+  campaignNameAr: string;
+  campaignNameEn: string;
+  productId: string;
+  productTitleAr: string;
+  platform: CampaignPlatform;
+  aiAngleAr: string;
+  targetRegionAr: string;
+  adSpendIQD: number;
+  adSpendUSD?: number;
+  viewsCount: number;
+  ordersCount: number;
+  attributedRevenueIQD: number;
+  status: 'active' | 'paused' | 'completed';
+  startDate: string;
+  cogsPercent: number; // percentage, e.g. 28%
+  linkedOrderIds: string[];
+  aiRecommendationAr: string;
+  abTestSplit?: {
+    variantA: { nameAr: string; spendIQD: number; ordersCount: number; revenueIQD: number; roas: number };
+    variantB: { nameAr: string; spendIQD: number; ordersCount: number; revenueIQD: number; roas: number };
+    winningVariant: 'var_a' | 'var_b';
+  };
 }
 
 const INITIAL_STAFF: StaffMember[] = [
@@ -523,6 +557,126 @@ const INITIAL_CAMPAIGN: LandingPageCampaign = {
   },
 };
 
+export const INITIAL_CAMPAIGNS_ROAS: CampaignROASRecord[] = [
+  {
+    id: 'roas-camp-1',
+    campaignNameAr: 'حملة درع 3D LED البصري الملكي - تيك توك حصري',
+    campaignNameEn: 'TikTok Exclusive 3D LED Plaque Campaign',
+    productId: 'prod-3d-led-acrylic-shield',
+    productTitleAr: 'لوحة أكريليك ثلاثية الأبعاد 3D LED بإضاءة سحرية',
+    platform: 'tiktok',
+    aiAngleAr: 'زاوية الإبهار البصري والفخامة والهدية الاستثنائية التي تدوم',
+    targetRegionAr: 'العراق - بغداد والوسط',
+    adSpendIQD: 450000,
+    adSpendUSD: 300,
+    viewsCount: 4210,
+    ordersCount: 31,
+    attributedRevenueIQD: 2480000,
+    status: 'active',
+    startDate: '2026-10-12',
+    cogsPercent: 28,
+    linkedOrderIds: ['NP-2026-9042', 'NP-2026-8510'],
+    aiRecommendationAr: 'عائد استثنائي فائق (5.51x)! زاوية فيديو تيك توك التفاعلي مع إضاءة الـ LED تزيد معدل التحويل إلى 4.8%. نوصي بزيادة الميزانية بنسبة 35% لتعزيز الوصول.',
+    abTestSplit: {
+      variantA: {
+        nameAr: 'النسخة أ (الفخامة الملكية والتأثير العاطفي)',
+        spendIQD: 225000,
+        ordersCount: 19,
+        revenueIQD: 1520000,
+        roas: 6.75,
+      },
+      variantB: {
+        nameAr: 'النسخة ب (الدقة الهندسية وضمان الاستبدال)',
+        spendIQD: 225000,
+        ordersCount: 12,
+        revenueIQD: 960000,
+        roas: 4.27,
+      },
+      winningVariant: 'var_a',
+    },
+  },
+  {
+    id: 'roas-camp-2',
+    campaignNameAr: 'حملة علب الكرتون الصلبة للمطاعم والبراندات الفاخرة',
+    campaignNameEn: 'Rigid Boxes for Restaurants & Cafes Campaign',
+    productId: 'prod-pizza-box',
+    productTitleAr: 'علب كرتون مقوى فاخرة بطباعة مخصصة وهوت فويل',
+    platform: 'facebook',
+    aiAngleAr: 'زاوية الانطباع التجاري الفاخر ومضاعفة ولاء زبائن المطاعم والكافيهات',
+    targetRegionAr: 'العراق - كافة المحافظات (قطاع الشركات B2B)',
+    adSpendIQD: 650000,
+    adSpendUSD: 433,
+    viewsCount: 2840,
+    ordersCount: 18,
+    attributedRevenueIQD: 3690000,
+    status: 'active',
+    startDate: '2026-10-08',
+    cogsPercent: 32,
+    linkedOrderIds: ['NP-2026-8912'],
+    aiRecommendationAr: 'عائد مرتفع جداً (5.68x) مع متوسط سلة طلبات ضخم (205,000 د.ع). الاستهداف المباشر لمدراء التسويق وأصحاب الكافيهات في فيسبوك حقق أعلى عائد ربحي صافي.',
+  },
+  {
+    id: 'roas-camp-3',
+    campaignNameAr: 'حملة كروت البصمة الحرارية الذهبية للصالونات والمكاتب التنفيذية',
+    campaignNameEn: 'Luxury Hot Foil Business Cards Instagram Campaign',
+    productId: 'prod-foil-business-cards',
+    productTitleAr: 'كروت أعمال ورقية فاخرة قطنية 600 جم مع بصمة حرارية',
+    platform: 'instagram',
+    aiAngleAr: 'زاوية اللمسة المخملية والانطباع الأول الذي لا يُنسى في الاجتماعات',
+    targetRegionAr: 'بغداد، أربيل، البصرة',
+    adSpendIQD: 380000,
+    adSpendUSD: 253,
+    viewsCount: 2450,
+    ordersCount: 22,
+    attributedRevenueIQD: 1760000,
+    status: 'active',
+    startDate: '2026-10-14',
+    cogsPercent: 25,
+    linkedOrderIds: ['NP-2026-9042'],
+    aiRecommendationAr: 'عائد قوي (4.63x). صور الماكرو التي تبرز انعكاس البصمة الذهبية والمعدنية على انستغرام ريلز تجلب زبائن مستعدين للدفع الفوري.',
+  },
+  {
+    id: 'roas-camp-4',
+    campaignNameAr: 'حملة مصباح الطائرة 3D LED لهدايا التخرج والطيارين',
+    campaignNameEn: 'Aviation 3D LED Lamp Snapchat Campaign',
+    productId: 'prod-airplane-led',
+    productTitleAr: 'مصباح طائرة ثلاثي الأبعاد 3D LED بقاعدة خشب زان',
+    platform: 'snapchat',
+    aiAngleAr: 'زاوية الهدية التذكارية المخصصة بحفر الاسم ورقم الرحلة',
+    targetRegionAr: 'بغداد والمنطقة الجنوبية',
+    adSpendIQD: 290000,
+    adSpendUSD: 193,
+    viewsCount: 1920,
+    ordersCount: 13,
+    attributedRevenueIQD: 1045000,
+    status: 'active',
+    startDate: '2026-10-15',
+    cogsPercent: 30,
+    linkedOrderIds: ['NP-2026-8510'],
+    aiRecommendationAr: 'عائد صحي (3.60x) في سناب شات. الجمهور الشاب يتفاعل بقوة مع زر سحب الشاشة للطلب والدفع عند الاستلام.',
+  },
+  {
+    id: 'roas-camp-5',
+    campaignNameAr: 'حملة لوحات الاستقبال والعيادات عبر بحث جوجل',
+    campaignNameEn: 'Google Search Ads for Corporate & Clinic Signs',
+    productId: 'prod-travel-acrylic-sign',
+    productTitleAr: 'لوحة أكريليك مثلج مضيئة للمكاتب والشركات',
+    platform: 'google',
+    aiAngleAr: 'زاوية البحث عن لوحات مكاتب فخمة وضمان الاستبدال الفوري',
+    targetRegionAr: 'العراق - بغداد والمراكز التجارية',
+    adSpendIQD: 490000,
+    adSpendUSD: 326,
+    viewsCount: 1180,
+    ordersCount: 15,
+    attributedRevenueIQD: 2325000,
+    status: 'active',
+    startDate: '2026-10-10',
+    cogsPercent: 30,
+    linkedOrderIds: ['NP-2026-9042'],
+    aiRecommendationAr: 'عائد استثنائي (4.74x) بأعلى نية شراء مباشرة (High Intent). الزوار القادمون من كلمات لوحات شركات بغداد يشترون بمعدل تحويل يتجاوز 12%.',
+  },
+];
+
 export const useAdminStore = create<AdminStore>()(
   persist(
     (set) => ({
@@ -858,6 +1012,114 @@ export const useAdminStore = create<AdminStore>()(
           };
         });
       },
+
+      // AI Campaign ROAS Sub-Dashboard State & Actions
+      campaignRoasRecords: INITIAL_CAMPAIGNS_ROAS,
+
+      updateCampaignAdSpend: (campaignId, adSpendIQD) => {
+        set((state) => ({
+          campaignRoasRecords: state.campaignRoasRecords.map((c) =>
+            c.id === campaignId
+              ? { ...c, adSpendIQD, adSpendUSD: Math.round(adSpendIQD / 1500) }
+              : c
+          ),
+        }));
+      },
+
+      recordAttributedSale: (campaignId, orderId, revenue) => {
+        set((state) => ({
+          campaignRoasRecords: state.campaignRoasRecords.map((c) => {
+            if (c.id !== campaignId) return c;
+            return {
+              ...c,
+              ordersCount: c.ordersCount + 1,
+              attributedRevenueIQD: c.attributedRevenueIQD + revenue,
+              linkedOrderIds: c.linkedOrderIds.includes(orderId) ? c.linkedOrderIds : [orderId, ...c.linkedOrderIds],
+            };
+          }),
+        }));
+      },
+
+      addCampaignRoasRecord: (record) => {
+        set((state) => ({
+          campaignRoasRecords: [record, ...state.campaignRoasRecords],
+        }));
+      },
+
+      deleteCampaignRoasRecord: (id) => {
+        set((state) => ({
+          campaignRoasRecords: state.campaignRoasRecords.filter((c) => c.id !== id),
+        }));
+      },
+
+      simulateAttributionOrder: (campaignId) => {
+        set((state) => {
+          const target = state.campaignRoasRecords.find((c) => c.id === campaignId) || state.campaignRoasRecords[0];
+          if (!target) return state;
+
+          const baseAvg = Math.round(target.attributedRevenueIQD / Math.max(1, target.ordersCount));
+          const simulatedRevenue = Math.max(35000, baseAvg || 75000);
+          const simOrderId = `NP-ORD-${Date.now().toString().slice(-4)}`;
+
+          const newSimOrder: AdminOrderRecord = {
+            orderId: simOrderId,
+            createdAt: 'الآن (مباشر)',
+            workflowStatus: 'in_design',
+            urgentDispatch: true,
+            items: [
+              {
+                id: `itm-sim-${Date.now()}`,
+                productId: target.productId,
+                titleAr: target.productTitleAr,
+                titleEn: target.campaignNameEn,
+                image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80',
+                category: 'led',
+                quantity: 1,
+                unitPrice: simulatedRevenue,
+                totalPrice: simulatedRevenue,
+                customOptions: {
+                  customText: `طلب منسوب من إعلان: ${target.campaignNameAr}`,
+                  dimensionLabelAr: 'قياس مخصص',
+                  dimensionLabelEn: 'Custom Standard',
+                  materialLabelAr: 'أكريليك كاست فاخر',
+                  materialLabelEn: 'Luxury Cast Acrylic',
+                },
+              },
+            ],
+            shipping: {
+              fullName: 'زبون حملة إعلانية (محاكى)',
+              phone: '+964 780 444 7711',
+              governorate: 'بغداد - الكرخ',
+              address: 'المنصور - تقاطع الرواد',
+              deliveryType: 'express',
+              shippingCost: 5000,
+            },
+            paymentMethod: 'zaincash',
+            paymentDetails: {
+              status: 'paid',
+              gatewayNameAr: 'زين كاش (تحويل مباشر)',
+              gatewayNameEn: 'ZainCash',
+            },
+            subtotal: simulatedRevenue,
+            shippingCost: 5000,
+            grandTotal: simulatedRevenue + 5000,
+            designerNotes: `طلب منسوب لحملة: ${target.campaignNameAr} على ${target.platform}`,
+          };
+
+          return {
+            adminOrders: [newSimOrder, ...state.adminOrders],
+            campaignRoasRecords: state.campaignRoasRecords.map((c) => {
+              if (c.id !== target.id) return c;
+              return {
+                ...c,
+                ordersCount: c.ordersCount + 1,
+                attributedRevenueIQD: c.attributedRevenueIQD + simulatedRevenue,
+                linkedOrderIds: [simOrderId, ...c.linkedOrderIds],
+              };
+            }),
+          };
+        });
+      },
     }),
     {
       name: 'noon_walqalam_admin_store_v4',
@@ -868,6 +1130,7 @@ export const useAdminStore = create<AdminStore>()(
         adminOrders: state.adminOrders,
         staffMembers: state.staffMembers,
         campaign: state.campaign,
+        campaignRoasRecords: state.campaignRoasRecords,
       }),
     }
   )

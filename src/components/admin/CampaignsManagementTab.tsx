@@ -40,6 +40,7 @@ import { SUPPORTED_COUNTRIES, getCountryByName, CountryInfo } from '../../data/g
 interface CampaignsManagementTabProps {
   onOpenPreview?: (productId?: string) => void;
   onNavigateToOrchestrator?: () => void;
+  onNavigateToROAS?: () => void;
 }
 
 export type AdPlatformId = 'tiktok' | 'facebook' | 'instagram' | 'snapchat' | 'google' | 'direct';
@@ -161,6 +162,7 @@ interface AICampaignResult {
 export const CampaignsManagementTab: React.FC<CampaignsManagementTabProps> = ({
   onOpenPreview,
   onNavigateToOrchestrator,
+  onNavigateToROAS,
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -484,6 +486,17 @@ export const CampaignsManagementTab: React.FC<CampaignsManagementTabProps> = ({
               >
                 <Zap className="w-4 h-4 fill-current text-stone-950" />
                 <span>{isAr ? '⚡ وحدة التحكم الذكية (AI Orchestrator)' : 'AI Orchestrator Console'}</span>
+              </button>
+            )}
+
+            {onNavigateToROAS && (
+              <button
+                type="button"
+                onClick={onNavigateToROAS}
+                className="px-5 py-3.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs border border-emerald-400/40 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                <span>{isAr ? 'العائد الإعلاني ROAS ومبيعات الحملات 📊' : 'Campaigns ROAS 📊'}</span>
               </button>
             )}
 

@@ -28,7 +28,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
             <button
               onClick={onBackToHome}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-purple-700 hover:border-purple-200 transition-all shadow-2xs font-bold cursor-pointer group"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-amber-700 hover:border-amber-300 transition-all shadow-2xs font-bold cursor-pointer group"
             >
               {isAr ? <ArrowRight className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> : <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />}
               <span>{isAr ? 'العودة للرئيسية' : 'Return Home'}</span>
@@ -44,9 +44,9 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
           <button
             onClick={() => setSelectedArticleId('art-portfolio')}
             type="button"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200/90 shadow-2xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-850 text-xs font-bold border border-amber-200/90 shadow-2xs transition-all cursor-pointer"
           >
-            <BookOpen className="w-3.5 h-3.5 text-purple-600" />
+            <BookOpen className="w-3.5 h-3.5 text-amber-600" />
             <span>{isAr ? 'قراءة دراسات الحالة وقصص المشاريع' : 'Read Case Studies'}</span>
           </button>
         </div>
@@ -75,11 +75,11 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
               <span>{isAr ? 'تصنيع محلي في ورشتنا' : 'In-House Fabrication'}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
               <span>{isAr ? 'خامات كاست أصلية 100%' : '100% Cast Virgin Acrylic'}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
-              <Layers className="w-3.5 h-3.5 text-purple-600" />
+              <Layers className="w-3.5 h-3.5 text-amber-600" />
               <span>{isAr ? 'قص وحفر ليزري فائق الدقة' : 'Sub-millimeter Laser Scoring'}</span>
             </div>
           </div>

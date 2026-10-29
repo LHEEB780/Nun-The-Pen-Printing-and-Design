@@ -116,11 +116,13 @@ export interface OrchestratorResult {
 interface AICampaignOrchestratorProps {
   onOpenPreview?: (productId?: string) => void;
   onNavigateToCampaigns?: () => void;
+  onNavigateToROAS?: () => void;
 }
 
 export const AICampaignOrchestrator: React.FC<AICampaignOrchestratorProps> = ({
   onOpenPreview,
   onNavigateToCampaigns,
+  onNavigateToROAS,
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -480,6 +482,16 @@ export const AICampaignOrchestrator: React.FC<AICampaignOrchestratorProps> = ({
               >
                 <Layers className="w-4 h-4" />
                 <span>إدارة الروابط والإحصائيات</span>
+              </button>
+            )}
+            {onNavigateToROAS && (
+              <button
+                type="button"
+                onClick={onNavigateToROAS}
+                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-sm font-bold border border-amber-500/40 transition shadow-sm"
+              >
+                <TrendingUp className="w-4 h-4 text-amber-400" />
+                <span>تحليلات العائد الإعلاني (ROAS) 📊</span>
               </button>
             )}
           </div>
@@ -1757,7 +1769,57 @@ export const AICampaignOrchestrator: React.FC<AICampaignOrchestratorProps> = ({
             </div>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm text-center space-y-6">
+          <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+            <Sparkles className="w-8 h-8 fill-current" />
+          </div>
+          <div className="max-w-xl mx-auto space-y-2">
+            <h3 className="text-xl font-bold text-stone-900">
+              وحدة التحكم التسويقية الذكية جاهزة للتشغيل
+            </h3>
+            <p className="text-sm text-stone-500 leading-relaxed">
+              اختر المنتج والدولة والمدينة من الأعلى، ثم اضغط على زر <strong>"تشغيل وحدة التحكم"</strong> ليبدأ نموذج الذكاء الاصطناعي في تحليل الجمهور، توليد نصوص إعلانية بلهجة البلد، وبناء نسختين لاختبار A/B Testing لمقارنة معدلات التحويل واقتراح النسخة الرابحة.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-right">
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-1">
+              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-indigo-600" />
+                <span>استهداف جغرافي مخصص</span>
+              </span>
+              <p className="text-[11px] text-stone-500">تحليل عادات الشراء والدفع عند الاستلام حسب الدولة والمدينة</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-1">
+              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <Split className="w-3.5 h-3.5 text-purple-600" />
+                <span>اختبار A/B Testing ومعدل CR%</span>
+              </span>
+              <p className="text-[11px] text-stone-500">توليد زاويتين تسويقيتين ومقارنة المبيعات ونسبة التحويل وتحديد الفائز</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-1">
+              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-600" />
+                <span>مزامنة واعتماد فوري</span>
+              </span>
+              <p className="text-[11px] text-stone-500">تطبيق النسخة الرابحة على صفحة الهبوط الحية بنقرة واحدة</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={handleRunOrchestrator}
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-sm shadow-xl shadow-amber-600/25 transition active:scale-[0.98]"
+          >
+            <Sparkles className="w-4 h-4 fill-current" />
+            <span>⚡ بدء التحليل وتوليد نسخ A/B الآن</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

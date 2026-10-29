@@ -10,6 +10,7 @@ import {
 import { useAdminStore, getUnifiedProducts } from '../../store/useAdminStore';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useCurrencyStore } from '../../store/useCurrencyStore';
 import { USD_TO_IQD_RATE } from '../../hooks/usePricingCalculator';
 import {
   ArrowLeft,
@@ -40,7 +41,10 @@ import {
   Copy,
   ExternalLink,
   Send,
+  Star,
+  Heart,
 } from 'lucide-react';
+import { ProductReviewsSection } from './ProductReviewsSection';
 
 interface ProductDetailPageProps {
   productId: string;
@@ -54,11 +58,37 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const { formatPrice, currency, exchangeRate } = useCurrencyStore();
   const { addItem, setIsOpen: setCartOpen, getTotalItemsCount } = useCartStore();
   const totalCartCount = getTotalItemsCount();
-  const { addDigitalProof } = useAuthStore();
+  const { addDigitalProof, wishlist, toggleWishlist, setIsWishlistOpen } = useAuthStore();
   const adminProducts = useAdminStore((state) => state.adminProducts);
   const productsList = useMemo(() => getUnifiedProducts(adminProducts), [adminProducts]);
+
+  const isWishlisted = useMemo(() => wishlist.includes(productId), [wishlist, productId]);
+
+  const handleToggleWishlist = () => {
+    const isAdded = toggleWishlist(product.id);
+    if (isAdded) {
+      toast.success(
+        isAr
+          ? `تمت إضافة «${product.titleAr}» إلى قائمة رغباتك ❤️`
+          : `Added "${product.titleEn}" to your wishlist ❤️`,
+        {
+          action: {
+            label: isAr ? 'فتح المفضلة' : 'View Favorites',
+            onClick: () => setIsWishlistOpen(true),
+          },
+        }
+      );
+    } else {
+      toast.info(
+        isAr
+          ? `تمت إزالة «${product.titleAr}» من قائمة رغباتك`
+          : `Removed "${product.titleEn}" from your wishlist`
+      );
+    }
+  };
 
   const product = useMemo(() => {
     // 1. Direct match in productsList
@@ -502,6 +532,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   </span>
                 </div>
 
+                {/* Wishlist Heart Button on Photo */}
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`absolute top-3 end-12 p-1.5 rounded-xl backdrop-blur-md transition-all cursor-pointer border border-white/20 z-10 ${
+                    isWishlisted
+                      ? 'bg-rose-500 text-white shadow-rose-500/30 shadow-md scale-105'
+                      : 'bg-slate-950/80 text-white hover:text-rose-400'
+                  }`}
+                  title={isWishlisted ? (isAr ? 'في قائمة الرغبات' : 'In Wishlist') : (isAr ? 'إضافة إلى قائمة الرغبات' : 'Add to Wishlist')}
+                  aria-label={isAr ? 'قائمة الرغبات' : 'Wishlist'}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
+                </button>
+
                 {/* Fullscreen Button */}
                 <button
                   type="button"
@@ -514,7 +559,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                 {/* Base Price Overlay Tag */}
                 <div className="absolute bottom-3 end-3 px-3 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-950 text-xs font-black shadow-md border border-slate-200 z-10">
-                  {product.basePrice.toLocaleString()} د.ع
+                  {formatPrice(product.basePrice, { isAr })}
                 </div>
               </div>
 
@@ -626,7 +671,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
 
             {/* 2. STUDIO DESIGN PROOF NOTIFICATION BANNER (Reassuring Workflow) */}
-            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-amber-100/40 to-purple-50 border border-amber-200 shadow-xs space-y-3">
+            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-50 via-amber-100/40 to-yellow-50/50 border border-amber-200 shadow-xs space-y-3">
               <div className="flex items-center gap-2.5 text-amber-950 font-black text-sm">
                 <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-2xs">
                   🎨
@@ -656,7 +701,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </span>
                 <span aria-hidden="true">·</span>
                 <span className="flex items-center gap-1">
-                  <Lock className="w-3.5 h-3.5 text-purple-700" />
+                  <Lock className="w-3.5 h-3.5 text-amber-700" />
                   <span>{isAr ? 'لا نبدأ التصنيع إلا بعد موافقتك' : 'No production without approval'}</span>
                 </span>
               </div>
@@ -858,7 +903,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           <span className="block">{isAr ? mat.labelAr : mat.labelEn}</span>
                           {mat.priceAdd > 0 && (
                             <span className={`block text-[10px] mt-0.5 font-mono ${isSelected ? 'text-amber-300' : 'text-amber-800'}`}>
-                              +{mat.priceAdd.toLocaleString()} د.ع
+                              +{formatPrice(mat.priceAdd, { isAr })}
                             </span>
                           )}
                         </button>
@@ -873,10 +918,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="space-y-2 pt-2">
                   <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <Palette className="w-3.5 h-3.5 text-purple-700" />
+                      <Palette className="w-3.5 h-3.5 text-amber-700" />
                       <span>{isAr ? 'لون إضاءة LED المفضل للقطعة:' : 'Preferred LED Illumination:'}</span>
                     </span>
-                    <span className="text-[10px] font-bold text-purple-700">
+                    <span className="text-[10px] font-bold text-amber-800">
                       {isAr ? selectedLed.nameAr : selectedLed.nameEn}
                     </span>
                   </label>
@@ -889,7 +934,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           type="button"
                           onClick={() => setSelectedLed(led)}
                           className={`w-9 h-9 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center ${
-                            isSelected ? 'scale-115 border-slate-900 ring-2 ring-purple-500/40' : 'border-slate-200'
+                            isSelected ? 'scale-115 border-slate-900 ring-2 ring-amber-500/40' : 'border-slate-200'
                           }`}
                           style={{ backgroundColor: led.hex }}
                           title={isAr ? led.nameAr : led.nameEn}
@@ -944,15 +989,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       {isAr ? 'كود: ' : 'SKU: '}{product.slug}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleShareProduct}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-amber-100/80 text-slate-700 hover:text-amber-950 border border-slate-200 text-xs font-bold transition-all cursor-pointer group"
-                    title={isAr ? 'مشاركة المنتج' : 'Share'}
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-amber-800 group-hover:scale-110 transition-transform" />
-                    <span>{isAr ? 'مشاركة' : 'Share'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* Wishlist Action Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleWishlist}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isWishlisted
+                          ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-2xs'
+                          : 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border-slate-200'
+                      }`}
+                      title={isWishlisted ? (isAr ? 'في قائمة الرغبات' : 'In Wishlist') : (isAr ? 'إضافة إلى قائمة الرغبات' : 'Add to Wishlist')}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-600'}`} />
+                      <span>{isWishlisted ? (isAr ? 'في المفضلة' : 'Saved') : (isAr ? 'المفضلة' : 'Wishlist')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleShareProduct}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-amber-100/80 text-slate-700 hover:text-amber-950 border border-slate-200 text-xs font-bold transition-all cursor-pointer group"
+                      title={isAr ? 'مشاركة المنتج' : 'Share'}
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-amber-800 group-hover:scale-110 transition-transform" />
+                      <span>{isAr ? 'مشاركة' : 'Share'}</span>
+                    </button>
+                  </div>
                 </div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
                   {isAr ? product.titleAr : product.titleEn}
@@ -960,6 +1022,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
                   {isAr ? product.descriptionAr : product.descriptionEn}
                 </p>
+
+                {/* Rating & Real Photos Quick Link */}
+                <div
+                  onClick={() => {
+                    document.getElementById('product-reviews-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-xl bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 cursor-pointer group transition-all"
+                  title={isAr ? 'انقر للانتقال لمعرض صور وتقييمات العملاء' : 'Click to jump to customer reviews and photos'}
+                >
+                  <div className="flex items-center gap-0.5 text-amber-500">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                    ))}
+                  </div>
+                  <span className="text-xs font-mono font-black text-slate-900">4.9</span>
+                  <span className="text-[11px] font-bold text-amber-900 group-hover:text-amber-950 transition-colors">
+                    {isAr ? '• تقييمات العملاء بالصور الواقعية 📸' : '• Verified Reviews with Real Photos 📸'}
+                  </span>
+                </div>
               </div>
 
               {/* Price Calculation Box */}
@@ -978,15 +1059,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="flex items-baseline justify-between">
                   <div>
                     <span className="text-2xl sm:text-3xl font-black text-slate-950">
-                      {totalPriceIQD.toLocaleString()} د.ع
+                      {formatPrice(totalPriceIQD, { isAr })}
                     </span>
                     <span className="text-xs text-slate-400 font-mono ms-2">
-                      (${totalPriceUSD})
+                      {currency === 'USD'
+                        ? `(${totalPriceIQD.toLocaleString()} د.ع)`
+                        : `($${totalPriceUSD})`}
                     </span>
                   </div>
                   {quantity > 1 && (
-                    <span className="text-xs text-slate-500">
-                      ({unitPriceIQD.toLocaleString()} د.ع / قطعة)
+                    <span className="text-xs text-slate-500 font-mono">
+                      ({formatPrice(unitPriceIQD, { isAr })} / {isAr ? 'قطعة' : 'unit'})
                     </span>
                   )}
                 </div>
@@ -1056,15 +1139,31 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
               )}
 
-              {/* Primary Add to Cart Button */}
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-700 via-amber-900 to-slate-900 hover:from-amber-800 hover:to-slate-800 text-white font-black text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer group"
-              >
-                <ShoppingBag className="w-4 h-4 text-amber-300 group-hover:scale-110 transition-transform" />
-                <span>{isAr ? 'إضافة إلى السلة وتثبيت بيانات التصميم' : 'Add to Cart & Submit Order'}</span>
-              </button>
+              {/* Primary Add to Cart & Wishlist Buttons */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-amber-700 via-amber-900 to-slate-900 hover:from-amber-800 hover:to-slate-800 text-white font-black text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer group"
+                >
+                  <ShoppingBag className="w-4 h-4 text-amber-300 group-hover:scale-110 transition-transform" />
+                  <span>{isAr ? 'إضافة إلى السلة وتثبيت بيانات التصميم' : 'Add to Cart & Submit Order'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`w-14 h-14 rounded-2xl border flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-sm ${
+                    isWishlisted
+                      ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-rose-200/50 scale-102'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200'
+                  }`}
+                  title={isWishlisted ? (isAr ? 'إزالة من المفضلة' : 'Remove from wishlist') : (isAr ? 'حفظ في المفضلة' : 'Save to wishlist')}
+                  aria-label={isAr ? 'قائمة الرغبات' : 'Wishlist'}
+                >
+                  <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-500'}`} />
+                </button>
+              </div>
 
               {/* Direct WhatsApp Consultation Button */}
               <a
@@ -1306,6 +1405,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
           </div>
 
+        </div>
+
+        {/* Customer Reviews & Received Product Photos Section */}
+        <div id="product-reviews-section">
+          <ProductReviewsSection
+            productId={product.id}
+            productTitleAr={product.titleAr}
+            productTitleEn={product.titleEn}
+            categoryLabelAr={product.categoryLabelAr}
+            categoryLabelEn={product.categoryLabelEn}
+          />
         </div>
 
         {/* Bottom Exit & Return to Catalog Banner (بانر الخروج والعودة للمتجر في نهاية الصفحة) */}

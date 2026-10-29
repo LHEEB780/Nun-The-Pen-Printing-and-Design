@@ -10,6 +10,11 @@ import { ContentManagementTab } from './ContentManagementTab';
 import { OffersManagementTab } from './OffersManagementTab';
 import { CampaignsManagementTab } from './CampaignsManagementTab';
 import { AICampaignOrchestrator } from './AICampaignOrchestrator';
+import { AdminSalesPartnersTab } from './AdminSalesPartnersTab';
+import { AdminCommissionsWalletTab } from './AdminCommissionsWalletTab';
+import { AdminQRCodesTab } from './AdminQRCodesTab';
+import { AdminCampaignROASTab } from './AdminCampaignROASTab';
+import { AdminAutonomousAgentsTab } from './AdminAutonomousAgentsTab';
 import {
   BarChart3,
   Sliders,
@@ -30,19 +35,29 @@ import {
   Flame,
   Bot,
   Zap,
+  Briefcase,
+  Wallet,
+  QrCode,
+  TrendingUp,
+  BrainCircuit,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export type AdminDashboardTab =
   | 'analytics'
+  | 'autonomous_agents'
   | 'orchestrator'
+  | 'campaign_roas'
   | 'campaigns'
   | 'offers'
   | 'form_builder'
   | 'products'
   | 'orders'
   | 'users'
-  | 'content';
+  | 'content'
+  | 'sales_partners'
+  | 'commissions_wallet'
+  | 'qr_codes';
 
 interface AdminDashboardProps {
   onBackToStore: () => void;
@@ -77,17 +92,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: ['analytics', 'orchestrator', 'campaigns', 'offers', 'form_builder', 'products', 'orders', 'users', 'content'],
-      descriptionAr: 'صلاحيات مطلقة: تحليلات الإيرادات، توجيه الحملات بالذكاء الاصطناعي، صفحات هبوط تيك توك، إدارة عروض الموسم، بناء النماذج، وتسعير المنتجات.',
-      descriptionEn: 'Full system privileges: Analytics, AI Campaign Orchestrator, TikTok Funnels, Seasonal Deals, Dynamic Forms, and Staff RBAC.',
+      allowedTabs: [
+        'analytics',
+        'autonomous_agents',
+        'orchestrator',
+        'campaign_roas',
+        'campaigns',
+        'offers',
+        'form_builder',
+        'products',
+        'orders',
+        'users',
+        'content',
+        'sales_partners',
+        'commissions_wallet',
+        'qr_codes',
+      ],
+      descriptionAr: 'صلاحيات مطلقة: قيادة فريق الوكلاء الموظفين الآليين، تحليلات الإيرادات، توجيه الحملات بالذكاء الاصطناعي، العائد الإعلاني ROAS، صفحات هبوط تيك توك، إدارة عروض الموسم، بناء النماذج، والشركاء.',
+      descriptionEn: 'Full system privileges: Autonomous Multi-Agent Staff command center, Analytics, AI Campaign Orchestrator, ROAS Attribution, TikTok Funnels, Seasonal Deals, Dynamic Forms, Staff RBAC, and Sales Partners.',
     },
     sales_manager: {
       titleAr: 'مدير المبيعات (Sales Manager)',
       titleEn: 'Sales Manager',
       badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-      allowedTabs: ['analytics', 'orchestrator', 'campaigns', 'offers', 'orders'],
-      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، توجيه الحملات الذكية، صفحات هبوط تيك توك، إدارة العروض، وفواتير الطلبات.',
-      descriptionEn: 'Sales permissions: Revenue charts, AI Campaign Orchestrator, TikTok Funnels, and orders tracking.',
+      allowedTabs: ['analytics', 'autonomous_agents', 'orchestrator', 'campaign_roas', 'campaigns', 'offers', 'orders', 'sales_partners', 'commissions_wallet', 'qr_codes'],
+      descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، الإشراف على وكلاء المهام، العائد الإعلاني ROAS، صفحات هبوط تيك توك، إدارة العروض، وفواتير الطلبات.',
+      descriptionEn: 'Sales permissions: Revenue charts, Autonomous Agents oversight, AI Campaign Orchestrator, ROAS Attribution, TikTok Funnels, orders tracking, and sales partners.',
     },
     inventory_manager: {
       titleAr: 'مدير المخزن والخامات (Inventory Manager)',
@@ -205,7 +235,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="text-xs text-purple-200 shrink-0 font-medium">
             <span>{isAr ? 'التبويبات المتاحة لك:' : 'Accessible tabs:'} </span>
             <span className="font-mono font-bold text-white">
-              {currentConfig.allowedTabs.length} / 9
+              {currentConfig.allowedTabs.length} / 12
             </span>
           </div>
         </div>
@@ -220,10 +250,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               icon: BarChart3,
             },
             {
+              id: 'autonomous_agents' as const,
+              labelAr: '🤖 فريق الوكلاء الموظفين (Multi-Agent)',
+              labelEn: '🤖 Autonomous Multi-Agent Staff',
+              icon: BrainCircuit,
+            },
+            {
+              id: 'sales_partners' as const,
+              labelAr: 'شركاء نون والقلم (فريق المبيعات)',
+              labelEn: 'Sales Partners & BD',
+              icon: Briefcase,
+            },
+            {
+              id: 'qr_codes' as const,
+              labelAr: 'باركودات QR المطبوعة للحملات',
+              labelEn: 'Printable QR Campaigns',
+              icon: QrCode,
+            },
+            {
+              id: 'commissions_wallet' as const,
+              labelAr: 'محفظة العمولات والتحويلات',
+              labelEn: 'Commissions & Payouts',
+              icon: Wallet,
+            },
+            {
               id: 'orchestrator' as const,
               labelAr: '⚡ موجّه الحملات بالذكاء الاصطناعي (AI Orchestrator)',
               labelEn: '⚡ AI Campaign Orchestrator',
               icon: Bot,
+            },
+            {
+              id: 'campaign_roas' as const,
+              labelAr: '📊 العائد الإعلاني ومبيعات الحملات (ROAS)',
+              labelEn: '📊 Campaign ROAS & Sales Attribution',
+              icon: TrendingUp,
             },
             {
               id: 'campaigns' as const,
@@ -298,16 +358,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Tab Content Display */}
         <div className="pt-2">
           {activeTab === 'analytics' && <AnalyticsTab />}
+          {activeTab === 'autonomous_agents' && <AdminAutonomousAgentsTab isAr={isAr} />}
+          {activeTab === 'sales_partners' && <AdminSalesPartnersTab isAr={isAr} />}
+          {activeTab === 'qr_codes' && <AdminQRCodesTab isAr={isAr} />}
+          {activeTab === 'commissions_wallet' && <AdminCommissionsWalletTab isAr={isAr} />}
           {activeTab === 'orchestrator' && (
             <AICampaignOrchestrator
               onOpenPreview={onOpenLandingPreview}
               onNavigateToCampaigns={() => handleSelectTab('campaigns')}
+              onNavigateToROAS={() => handleSelectTab('campaign_roas')}
+            />
+          )}
+          {activeTab === 'campaign_roas' && (
+            <AdminCampaignROASTab
+              onNavigateToOrchestrator={() => handleSelectTab('orchestrator')}
+              isAr={isAr}
             />
           )}
           {activeTab === 'campaigns' && (
             <CampaignsManagementTab
               onOpenPreview={onOpenLandingPreview}
               onNavigateToOrchestrator={() => handleSelectTab('orchestrator')}
+              onNavigateToROAS={() => handleSelectTab('campaign_roas')}
             />
           )}
           {activeTab === 'offers' && <OffersManagementTab />}
