@@ -31,8 +31,10 @@ import {
   Lock,
   Unlock,
   CornerDownLeft,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SocialMediaAgentStudio } from './SocialMediaAgentStudio';
 import {
   useAutonomousAgentsStore,
   AgentInfo,
@@ -70,7 +72,7 @@ export const AdminAutonomousAgentsTab: React.FC<AdminAutonomousAgentsTabProps> =
     clearAuditLogs,
   } = useAutonomousAgentsStore();
 
-  const [activeSubTab, setActiveSubTab] = useState<'agents' | 'hitl' | 'bus' | 'audit'>('agents');
+  const [activeSubTab, setActiveSubTab] = useState<'agents' | 'social_media' | 'hitl' | 'bus' | 'audit'>('agents');
   const [selectedAgentDetails, setSelectedAgentDetails] = useState<AgentInfo | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending_approval' | 'completed' | 'rejected'>('all');
@@ -316,9 +318,24 @@ export const AdminAutonomousAgentsTab: React.FC<AdminAutonomousAgentsTabProps> =
           }`}
         >
           <Bot className="w-4 h-4 text-amber-500" />
-          <span>{isAr ? 'طاقم الوكلاء الموظفين (6 وكلاء)' : 'Agents Fleet'}</span>
+          <span>{isAr ? `طاقم الوكلاء الموظفين (${agents.length} وكلاء)` : `Agents Fleet (${agents.length})`}</span>
           <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px] font-mono">
             {agents.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('social_media')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+            activeSubTab === 'social_media'
+              ? 'bg-pink-700 text-white shadow-xs'
+              : 'text-stone-600 hover:bg-stone-100'
+          }`}
+        >
+          <Share2 className="w-4 h-4 text-pink-500" />
+          <span>{isAr ? 'وكيل السوشيال ميديا وصناعة المحتوى' : 'Social Media Agent'}</span>
+          <span className="px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 text-[10px] font-mono font-bold">
+            Draft
           </span>
         </button>
 
@@ -431,6 +448,7 @@ export const AdminAutonomousAgentsTab: React.FC<AdminAutonomousAgentsTabProps> =
                           {agent.role === 'catalog_content' && <Sparkles className="w-6 h-6" />}
                           {agent.role === 'campaigns_growth' && <TrendingUp className="w-6 h-6" />}
                           {agent.role === 'system_health' && <ShieldAlert className="w-6 h-6" />}
+                          {agent.role === 'social_media_manager' && <Share2 className="w-6 h-6" />}
                         </div>
                         <div>
                           <h4 className="text-sm font-bold text-stone-900 line-clamp-1">{agent.nameAr}</h4>
@@ -489,18 +507,40 @@ export const AdminAutonomousAgentsTab: React.FC<AdminAutonomousAgentsTabProps> =
                       <strong className="text-stone-900 font-mono text-sm">{agent.tasksCompletedCount}</strong>
                     </div>
 
-                    <button
-                      onClick={() => setSelectedAgentDetails(agent)}
-                      className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-stone-600" />
-                      <span>{isAr ? 'إعدادات الصلاحية' : 'Configure'}</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {agent.role === 'social_media_manager' && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveSubTab('social_media')}
+                          className="px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs transition cursor-pointer flex items-center gap-1 border border-pink-200"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-pink-600" />
+                          <span>{isAr ? 'استوديو الصياغة' : 'Studio'}</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setSelectedAgentDetails(agent)}
+                        className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold text-xs transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-stone-600" />
+                        <span>{isAr ? 'إعدادات الصلاحية' : 'Configure'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* SUB-TAB: SOCIAL MEDIA MANAGEMENT AGENT STUDIO */}
+      {/* ========================================================= */}
+      {activeSubTab === 'social_media' && (
+        <div className="animate-in fade-in duration-200">
+          <SocialMediaAgentStudio isAr={isAr} />
         </div>
       )}
 

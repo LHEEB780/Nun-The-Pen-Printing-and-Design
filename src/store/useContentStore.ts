@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type QuickLinkSectionKey = 'home' | 'services' | 'portfolio' | 'custom_products' | 'why_us' | 'contact';
+export type QuickLinkSectionKey = 'home' | 'services' | 'portfolio' | 'custom_products' | 'why_us' | 'contact' | 'faq';
 
 export interface ArticleMetric {
   labelAr: string;
@@ -622,6 +622,149 @@ Address: Al-Mansour, Al-Rowad Intersection, Baghdad, Iraq.
     actionTextAr: 'بدء محادثة واتساب الآن',
     actionTextEn: 'Chat on WhatsApp',
     actionLink: 'whatsapp',
+  },
+  {
+    id: 'art-faq',
+    sectionKey: 'faq',
+    slug: 'knowledge-base-faq',
+    titleAr: 'قاعدة المعرفة – الأسئلة الشائعة حول الطلبات المخصصة، الشحن، وإرشادات العناية بالمواد',
+    titleEn: 'Knowledge Base – FAQ: Custom Orders, Shipping Times & Material Care',
+    subtitleAr: 'دليل إرشادي شامل وموثق يجيب على كافة استفسارات العملاء والشركات في العراق',
+    subtitleEn: 'Comprehensive guide covering custom fabrication, shipping across Iraq, and acrylic preservation',
+    categoryAr: 'قاعدة المعرفة والدعم الفني',
+    categoryEn: 'Knowledge Base & Technical Support',
+    summaryAr: 'إجابات تفصيلية وشاملة حول مسار اعتماد البروفة الرقمية للطلبات المخصصة، جداول التوصيل لبغداد وكافة المحافظات، ومعايير تنظيف وحفظ الأكريليك المضيء والعلب الكرتونية الفاخرة.',
+    summaryEn: 'In-depth answers detailing custom digital proof approvals, Baghdad and governorate shipping timelines, and professional care standards for LED acrylic and rigid packaging.',
+    coverImage: '/images/products/led_acrylic_3d_plane_1791816292618.jpg',
+    galleryImages: [
+      '/images/products/led_acrylic_3d_lifestyle_1791816373444.jpg',
+      '/images/products/travel_agency_wall_front_1791817427540.jpg',
+      '/images/products/rigid_packaging_box_front_1791817654761.jpg',
+    ],
+    authorAr: 'فريق الدعم الفني وإدارة الجودة – نُون والقَلَم',
+    authorEn: 'Technical Support & Quality Team – Noon & Pen',
+    publishedDate: '2026-10-30',
+    readTime: '6 دقائق قراءة',
+    highlightsAr: [
+      'بروفة رقمية معتمدة عبر واتساب وحسابك قبل قص أو طباعة أي قطعة.',
+      'توصيل سريع لبغداد خلال 24 ساعة (5,000 د.ع / شحن مجاني للطلبات فوق 150,000 د.ع).',
+      'تغطية شاملة لكافة المحافظات الـ 18 خلال 48-72 ساعة بتغليف صدمات معزز.',
+      'إرشادات حصرية لتنظيف الأكريليك بقطعة مايكروفايبر والتحذير من استخدام الكحول.',
+    ],
+    highlightsEn: [
+      'Approved digital proof sent via dashboard and WhatsApp before any fabrication.',
+      '24-hour Baghdad express delivery (5,000 IQD / free over 150,000 IQD).',
+      'Full coverage of all 18 governorates within 48-72h in shock-resistant packaging.',
+      'Critical cleaning instructions using microfiber and strictly avoiding alcohol solvents.',
+    ],
+    metrics: [
+      { labelAr: 'معدل الرد الفوري على الاستفسارات', labelEn: 'Average Response Time', value: '< 5 دقائق' },
+      { labelAr: 'ضمان قطع الإضاءة والمحولات', labelEn: 'LED Circuit Warranty', value: '12 شهراً' },
+      { labelAr: 'التوصيل لجميع المحافظات', labelEn: 'Nationwide Delivery', value: '18 / 18' },
+      { labelAr: 'مطابقة البروفة الرقمية', labelEn: 'Proof Match Guarantee', value: '100%' },
+    ],
+    contentAr: `
+### 🎨 أولاً: استفسارات الطلبات المخصصة والتنفيذ (Custom Orders)
+
+1. **كيف أطلب تصميماً مخصصاً بالكامل؟**
+يمكنك البدء فوراً عبر استوديو التخصيص ثلاثي الأبعاد التفاعلي في موقعنا أو النقر على زر «طلب تصميم». تختار المنتج المطلوب وخاماته، ثم ترفع ملف الشعار وتكتب النصوص والأسماء. بعد إرسال الطلب يتواصل معك مهندس الإنتاج لإعداد ومطابقة التصميم قبل التصنيع.
+
+2. **هل أحصل على بروفة رقمية قبل بدء القص والطباعة؟**
+نعم بالتأكيد! لن يتم قص أي لوح أكريليك أو تشغيل ماكينة الطباعة حتى تقوم بمراجعة البروفة الرقمية التفصيلية (Digital Proof) والموافقة عليها بنسبة 100% عبر حسابك في المنصة أو عبر الواتساب.
+
+3. **ما هي الخطوط العربية والتشطيبات الفاخرة المتاحة؟**
+نوفر تصاميم بخطوط عربية تراثية وأصيلة (الثلث، الكوفي الفاطمي، الديواني، والرقعة) بإشراف خطاطين محترفين. وتشمل تشطيباتنا: البصمة الحرارية الألمانية (Hot Foil Kurz باللون الذهبي والفضي)، الحفر الليزري الميكرومتري، والأكريليك المرآة الفاخر (Gold/Silver Mirror).
+
+4. **ما هو الحد الأدنى للطلب (MOQ)؟**
+ننفذ القطع الفردية (قطعة واحدة فقط) للوحات الـ LED ودروع التكريم. أما بالنسبة لعلب الكرتون الصلبة المطبوعة بالكامل وكروت الأعمال الفاخرة، فإن الحد الأدنى للتصنيع التجاري يبدأ من 50 إلى 100 قطعة.
+
+---
+
+### 🚚 ثانياً: مواعيد الشحن وأجور التوصيل (Shipping & Logistics)
+
+1. **كم تستغرق مدة تنفيذ وتصنيع الطلبات المخصصة؟**
+تستغرق دورة التصنيع المعتادة بين 24 إلى 48 ساعة فقط من لحظة موافقتك النهائية على البروفة الرقمية. في حال الطلبات الكبيرة للشركات (أكثر من 200 قطعة) يتم التنسيق المسبق مع إدارة الإنتاج.
+
+2. **ما هي مواعيد وأجور التوصيل إلى مناطق بغداد؟**
+يتم التوصيل داخل بغداد (الرصافة والكرخ) خلال 24 ساعة من اكتمال التصنيع. تكلفة التوصيل ثابتة (5,000 د.ع)، وتكون مجانية تماماً لأي طلب تتجاوز قيمته 150,000 د.ع.
+
+3. **كيف يتم الشحن إلى باقي المحافظات العراقية؟**
+نغطي جميع محافظات العراق الـ 18 (أربيل، السليمانية، البصرة، النجف، كربلاء، بابل، الموصل، وغيرها) خلال 48 إلى 72 ساعة، بتكلفة موحدة قدرها 8,000 د.ع مع كود تتبع مباشر للشحنة.
+
+4. **هل يتوفر شحن فوري ومستعجل للفعاليات الطارئة؟**
+نعم! نوفر خدمة المسار السريع (VIP Rush Execution) للتسليم في نفس اليوم أو خلال 12 ساعة داخل بغداد للمناسبات الرسمية والتكريمات العاجلة.
+
+---
+
+### 🛡️ ثالثاً: إرشادات العناية بالمواد والصيانة (Material Care & Preservation)
+
+1. **كيف أنظف لوحات ومجسمات الأكريليك المضيئة LED دون إحداث خدوش؟**
+استخدم دائماً قطعة قماش مايكروفايبر ناعمة ونظيفة برفق وبحركات دائرية خفيفة لإزالة الغبار. تجنب نهائياً استخدام المناديل الورقية الخشنة أو الأقمشة الجافة الخشنة.
+
+⚠️ **تحذير بالغ الأهمية:** تجنب تماماً استخدام الكحول الطبي، الأسيتون، أو ملمعات الزجاج المحتوية على الأمونيا؛ لأنها تسبب تضبب الأكريليك وتشققه (Crazing). للتنظيف العميق استخدم فقط قطرة من صابون أطباق سائل خفيف مخفف بماء فاتر.
+
+2. **كيف أحافظ على علب الكرتون الصلبة والورق الفاخر ذو البصمة الذهبية؟**
+احفظ علب الهدايا والمطبوعات الفاخرة في مكان معتدل وجاف بعيداً عن الرطوبة المباشرة أو أشعة الشمس الحارقة الممتدة لحماية لمعان رقائق البصمة الذهبية ومنع تقوس الورق القطني.
+
+3. **ما هي معايير تشغيل وصيانة إضاءة الـ LED والمحولات؟**
+تعمل جميع لوحاتنا بإضاءة LED منخفضة الجهد وآمنة كلياً (12V DC أو منفذ Type-C 5V) مع عمر تشغيلي يتجاوز 50,000 ساعة واستهلاك كهربائي ضئيل. يرجى فصل التيار الكهربائي قبل تنظيف اللوحة أو نقلها من مكانها.
+
+4. **ما هو الضمان المقدم على القطع المصنعة؟**
+نقدم ضماناً حقيقياً لمدة عام كامل (12 شهراً) على كافة المكونات الإلكترونية والمحولات وقواعد الإضاءة، مع استبدال فوري مجاني ضد أي عيب مصنعي.
+    `,
+    contentEn: `
+### 🎨 1. Custom Orders & Bespoke Fabrication Inquiries
+
+1. **How do I place a fully customized order?**
+You can start immediately via our interactive 3D studio or by clicking "Custom Design". Select your product, upload your logo (AI, PDF, SVG, or high-res PNG), and enter your custom text. Our production engineer will review your design before fabrication.
+
+2. **Do I get a digital proof before manufacturing starts?**
+Yes, absolutely! No acrylic sheet is cut or packaging printed without your 100% sign-off on a detailed digital proof showing exact dimensions, calligraphy curves, and LED glow diffusion via your dashboard and WhatsApp.
+
+3. **What calligraphy styles and luxury finishes are available?**
+We offer authentic Arabic calligraphy styles (Thuluth, Kufic, Diwani, and Ruq’ah) supervised by master calligraphers. Finishes include German Kurz hot foil (gloss/matte gold and silver), sub-millimeter laser scoring, and diamond-polished crystal edges.
+
+4. **What is the Minimum Order Quantity (MOQ)?**
+We fabricate single bespoke pieces (MOQ: 1 unit) for LED lamps, wedding plaques, and trophies. For fully custom printed rigid cardboard boxes and hot-foil business cards, minimum commercial runs start at 50–100 units.
+
+---
+
+### 🚚 2. Shipping Logistics & Delivery Schedules Across Iraq
+
+1. **How long does workshop fabrication take?**
+Standard fabrication takes 24 to 48 hours from your final approval of the digital proof. For volume corporate orders (200+ units), an explicit production timetable is agreed upon with the production manager.
+
+2. **What are the delivery times and shipping rates in Baghdad?**
+Delivery within Baghdad occurs within 24 hours of inspection. Shipping rate is a flat 5,000 IQD, and 100% free for orders exceeding 150,000 IQD.
+
+3. **How does shipping to other Iraqi governorates work?**
+We ship across all 18 Iraqi governorates (Erbil, Sulaymaniyah, Basra, Najaf, Karbala, Mosul, etc.) within 48–72 hours with a flat fee of 8,000 IQD and live package tracking.
+
+4. **Do you offer rush emergency turnaround?**
+Yes! We provide a VIP Rush Execution service for same-day or 12-hour delivery in Baghdad for urgent ceremonies and corporate events.
+
+---
+
+### 🛡️ 3. Material Care & Professional Maintenance
+
+1. **How should I clean 3D LED acrylic lamps without scratching?**
+Always use a clean microfiber cloth. Gently wipe the acrylic surface in light circular motions to remove dust. Never use coarse paper towels or dry fabrics that cause micro-scratches.
+
+⚠️ **Critical Warning:** Never use medical alcohol, acetone, ammonia-based glass cleaners, or solvents, as they cause acrylic hazing and crazing. For deep cleaning, use only a drop of mild dish soap diluted in lukewarm water.
+
+2. **How should I store luxury rigid boxes and hot-foil stationery?**
+Store luxury rigid boxes and foiled cards in a dry, climate-controlled space away from direct moisture and prolonged scorching sunlight to preserve foil luster and board rigidity.
+
+3. **What are the operating standards for LED circuits and adapters?**
+All our LED fixtures operate on safe low-voltage circuits (12V DC or 5V Type-C) with a lifespan exceeding 50,000 operational hours. Always disconnect power before dusting or relocating.
+
+4. **What warranty is provided?**
+We provide an authentic 1-year (12-month) warranty on all electronic circuits, LED strips, adapters, and wooden bases, plus free instant remake or replacement for any manufacturing defect.
+    `,
+    isActive: true,
+    actionTextAr: 'فتح مركز الأسئلة الشائعة التفاعلي',
+    actionTextEn: 'Open Interactive FAQ Center',
+    actionLink: 'customizer',
   },
 ];
 

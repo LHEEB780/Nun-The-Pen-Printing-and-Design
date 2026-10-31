@@ -1,15 +1,16 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, Mail, MapPin, Clock, ArrowUpRight, Sparkles, MessageCircle, BookOpen, ShieldAlert, Briefcase } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ArrowUpRight, Sparkles, MessageCircle, BookOpen, ShieldAlert, Briefcase, HelpCircle, FileQuestion, ChevronRight, ChevronLeft } from 'lucide-react';
 import { COMPANY_CONTACT } from '../../data/mockData';
 import { useContentStore, QuickLinkSectionKey } from '../../store/useContentStore';
 
 interface FooterProps {
   onNavigate?: (view: 'home' | 'shop' | 'dashboard' | 'admin' | 'specialty' | 'offers' | 'portfolio' | 'partners', specialtyId?: any) => void;
   onOpenCustomizer?: (productId?: string) => void;
+  onOpenFaq?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer, onOpenFaq }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { getArticleBySection, setSelectedArticleId } = useContentStore();
@@ -25,6 +26,19 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
 
   const handleLinkClick = (key: QuickLinkSectionKey, href: string, e: React.MouseEvent) => {
     e.preventDefault();
+    if (key === 'faq') {
+      if (onOpenFaq) {
+        onOpenFaq();
+        return;
+      }
+      const el = document.getElementById('faq-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      setSelectedArticleId('art-faq');
+      return;
+    }
     if (key === 'portfolio') {
       if (onNavigate) {
         onNavigate('portfolio');
@@ -96,53 +110,32 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
             </div>
           </div>
 
-          {/* Quick Links with CMS Articles Integration */}
+          {/* Quick Links Navigation */}
           <div>
             <h4 className="text-slate-900 text-sm font-bold mb-4 tracking-wide flex items-center gap-2">
-              <span className="w-1.5 h-3.5 bg-purple-600 rounded-full" />
+              <span className="w-1.5 h-3.5 bg-amber-600 rounded-full" />
               <span>{t('footer.quickLinks')}</span>
             </h4>
-            <ul className="space-y-2 text-sm">
+            {/* 2-Column Clean Grid of Navigation Buttons (صفين مرتبين في بطاقات أنيقة) */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
               {quickLinksConfig.map((link) => {
-                const article = getArticleBySection(link.key);
-                const displayTitle = article
-                  ? isAr
-                    ? article.titleAr.split('–')[0].trim() || link.defaultTitleAr
-                    : article.titleEn.split('–')[0].trim() || link.defaultTitleEn
-                  : isAr
-                  ? link.defaultTitleAr
-                  : link.defaultTitleEn;
+                const label = isAr ? link.defaultTitleAr : link.defaultTitleEn;
 
                 return (
-                  <li key={link.key}>
-                    <button
-                      onClick={(e) => handleLinkClick(link.key, link.href, e)}
-                      className="group flex items-center justify-between w-full text-start py-1 text-slate-600 hover:text-purple-700 transition-colors"
-                      title={isAr ? `قراءة مقال وتفاصيل: ${displayTitle}` : `Read article & details: ${displayTitle}`}
-                    >
-                      <span className={`font-medium group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform flex items-center gap-1.5 ${link.key === 'portfolio' ? 'text-purple-900 font-bold' : ''}`}>
-                        {displayTitle}
-                        {link.key === 'portfolio' && (
-                          <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-purple-100 text-purple-700 font-bold border border-purple-200">
-                            {isAr ? 'معرض الصور' : 'Gallery'}
-                          </span>
-                        )}
-                      </span>
-                      <span className={`transition-opacity text-[11px] text-purple-600 flex items-center gap-0.5 ${link.key === 'portfolio' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                        {link.key === 'portfolio' ? (
-                          <span className="text-[10px] text-purple-600 font-semibold">{isAr ? 'عرض' : 'View'}</span>
-                        ) : (
-                          <>
-                            <BookOpen className="w-3 h-3" />
-                            <span className="text-[10px]">{isAr ? 'مقال' : 'Article'}</span>
-                          </>
-                        )}
-                      </span>
-                    </button>
-                  </li>
+                  <button
+                    key={link.key}
+                    onClick={(e) => handleLinkClick(link.key, link.href, e)}
+                    className="group flex items-center justify-between gap-1.5 w-full p-2.5 rounded-xl bg-white/90 hover:bg-amber-50/90 border border-slate-200/90 hover:border-amber-300 text-slate-700 hover:text-amber-950 transition-all duration-200 shadow-2xs active:scale-[0.98] cursor-pointer text-start"
+                    title={isAr ? `الانتقال إلى: ${label}` : `Go to: ${label}`}
+                  >
+                    <span className="font-bold text-xs truncate group-hover:translate-x-0.5 group-hover:rtl:-translate-x-0.5 transition-transform">
+                      {label}
+                    </span>
+                    <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-700 shrink-0 rtl:rotate-0 ltr:rotate-180 transition-colors" />
+                  </button>
                 );
               })}
-            </ul>
+            </div>
           </div>
 
           {/* Product Categories */}
@@ -151,47 +144,68 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenCustomizer }) 
               <span className="w-1.5 h-3.5 bg-sky-500 rounded-full" />
               <span>{t('footer.categories')}</span>
             </h4>
-            <ul className="space-y-2 text-xs text-slate-600">
-              {[
-                { labelAr: '🏷️ عروض الموسم والتخفيضات الكبرى (خصم 33%)', labelEn: '🏷️ Grand Seasonal Offers (33% OFF)', isOffers: true },
-                { labelAr: 'لوحات أكريليك مضيئة LED', labelEn: '3D LED Acrylic Signs', catId: 'led' },
-                { labelAr: 'علب كرتون مقوى فاخرة (Rigid Boxes)', labelEn: 'Rigid Gift Box Packaging', catId: 'boxes' },
-                { labelAr: 'كروت أعمال وبصمة حرارية', labelEn: 'Hot-Foil Business Cards', catId: 'cards' },
-                { labelAr: 'لوحات بورتريه فيكتور مخصصة', labelEn: 'Custom Vector Portrait Lamps', catId: 'portraits' },
-                { labelAr: 'دروع تذكارية وتوثيق الزفاف', labelEn: 'Commemorative Wedding Plaques', catId: 'weddings' },
-                { labelAr: 'هدايا الشركات ودروع التكريم', labelEn: 'Executive Corporate Awards', catId: 'led' },
-              ].map((item, idx) => (
-                <li key={idx}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (item.isOffers && onNavigate) {
-                        onNavigate('offers');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      } else if (onNavigate) {
-                        onNavigate('shop');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      } else {
-                        const el = document.querySelector('#categories') || document.querySelector('#shop');
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className={`flex items-center gap-2 py-0.5 text-start cursor-pointer w-full group transition-colors ${
-                      item.isOffers
-                        ? 'text-amber-900 font-bold hover:text-amber-700'
-                        : 'text-slate-600 hover:text-purple-700'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full transition-transform ${
-                      item.isOffers ? 'bg-amber-500 scale-125' : 'bg-purple-400 group-hover:scale-125'
-                    }`} />
-                    <span className="group-hover:translate-x-1 group-hover:rtl:-translate-x-1 transition-transform">
-                      {isAr ? item.labelAr : item.labelEn}
+            {/* 2-Column Clean Grid of Category Buttons with Featured Offer Header */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {/* Featured Seasonal Offer Card (Spans across both columns) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('offers');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className="col-span-2 group flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 hover:from-amber-100 hover:to-orange-100 border border-amber-300/90 text-amber-950 transition-all duration-200 shadow-2xs active:scale-[0.98] cursor-pointer text-start"
+                title={isAr ? 'عروض وتخفيضات الموسم الكبرى (خصم 33%)' : 'Seasonal Mega Offers (33% OFF)'}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base shrink-0">🏷️</span>
+                  <div className="min-w-0">
+                    <span className="font-extrabold text-xs block truncate text-amber-950">
+                      {isAr ? 'عروض وتخفيضات الموسم' : 'Grand Seasonal Offers'}
                     </span>
-                  </button>
-                </li>
+                    <span className="text-[10px] text-amber-800 font-bold block">
+                      {isAr ? 'خصومات حصرية تصل إلى 33%' : 'Up to 33% OFF'}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-amber-800 text-white px-2 py-1 rounded-lg font-bold shrink-0 shadow-2xs group-hover:bg-amber-900 transition-colors flex items-center gap-1">
+                  <span>{isAr ? 'تصفح' : 'View'}</span>
+                  <ChevronLeft className="w-3 h-3 rtl:rotate-0 ltr:rotate-180" />
+                </span>
+              </button>
+
+              {/* 6 Core Product Categories in 2 Symmetrical Columns */}
+              {[
+                { labelAr: 'لوحات أكريليك LED', labelEn: '3D LED Acrylic Signs', catId: 'led' },
+                { labelAr: 'علب كرتون فاخرة', labelEn: 'Rigid Gift Boxes', catId: 'boxes' },
+                { labelAr: 'كروت أعمال وبصمة', labelEn: 'Hot-Foil Cards', catId: 'cards' },
+                { labelAr: 'لوحات بورتريه فيكتور', labelEn: 'Vector Portraits', catId: 'portraits' },
+                { labelAr: 'دروع توثيق الزفاف', labelEn: 'Wedding Plaques', catId: 'weddings' },
+                { labelAr: 'هدايا ودروع الشركات', labelEn: 'Corporate Trophies', catId: 'led' },
+              ].map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    if (onNavigate) {
+                      onNavigate('shop');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      const el = document.querySelector('#shop') || document.querySelector('#categories');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="group flex items-center justify-between gap-1.5 w-full p-2.5 rounded-xl bg-white/90 hover:bg-sky-50/90 border border-slate-200/90 hover:border-sky-300 text-slate-700 hover:text-sky-950 transition-all duration-200 shadow-2xs active:scale-[0.98] cursor-pointer text-start"
+                  title={isAr ? `تصفح قسم: ${item.labelAr}` : `Browse: ${item.labelEn}`}
+                >
+                  <span className="font-bold text-xs truncate group-hover:translate-x-0.5 group-hover:rtl:-translate-x-0.5 transition-transform">
+                    {isAr ? item.labelAr : item.labelEn}
+                  </span>
+                  <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-700 shrink-0 rtl:rotate-0 ltr:rotate-180 transition-colors" />
+                </button>
               ))}
-            </ul>
+            </div>
           </div>
 
           {/* Contact Details (Light & Airy Card) */}

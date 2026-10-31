@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ArrowLeft, Sparkles, BookOpen, ShieldCheck, CheckCircle2, Layers, Award } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sparkles, BookOpen, ShieldCheck, CheckCircle2, Layers, Award, Camera } from 'lucide-react';
 import { PortfolioSection } from '../home/PortfolioSection';
+import { ProductReviewsSection } from '../product/ProductReviewsSection';
 import { useContentStore } from '../../store/useContentStore';
 
 interface PortfolioPageProps {
@@ -88,6 +89,32 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
 
       {/* Embedded Portfolio Section with Filter Tabs & Gallery */}
       <PortfolioSection onOpenCustomizer={onOpenCustomizer} />
+
+      {/* Dedicated Customer Reviews & Delivery Photos Showcase (خارج الصفحة الرئيسية) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 pt-12 border-t border-slate-200/80">
+        <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/90 text-amber-800 text-xs font-bold">
+            <Camera className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isAr ? 'موثقة بالصور من ورشاتنا ومواقع التسليم' : 'Verified Photos from Workshops & Delivery Sites'}</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+            {isAr ? 'تجارب وآراء العملاء وصور استلام المنتجات' : 'Customer Experiences & Unboxing Gallery'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600">
+            {isAr
+              ? 'شاهد انطباعات وتقييمات عملائنا في بغداد وجميع المحافظات بعد استلام الدروع، والعلب الفاخرة، واللوحات الإعلانية المضيئة.'
+              : 'Browse real customer feedback and unboxing photos across Baghdad and all Iraqi governorates.'}
+          </p>
+        </div>
+
+        <ProductReviewsSection
+          productId="all"
+          productTitleAr="مشاريع وأعمال استوديو نُون والقَلَم"
+          productTitleEn="Noon & Pen Studio Projects"
+          categoryLabelAr="معرض التسليم الحقيقي"
+          categoryLabelEn="Real Delivery Showcase"
+        />
+      </div>
     </div>
   );
 };

@@ -20,6 +20,8 @@ import { CustomizerModal } from './components/customizer/CustomizerModal';
 import { CartDrawer } from './components/cart/CartDrawer';
 import { FavoritesDrawer } from './components/wishlist/FavoritesDrawer';
 import { ArticleDetailModal } from './components/article/ArticleDetailModal';
+import { FaqModal } from './components/faq/FaqModal';
+import { FaqSection } from './components/faq/FaqSection';
 import { MessageCircle } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { OrderRecord, useCartStore } from './store/useCartStore';
@@ -65,6 +67,7 @@ export default function App() {
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [customizerInitialId, setCustomizerInitialId] = useState<string | undefined>(undefined);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<OrderRecord | null>(null);
 
   const { lastOrder } = useCartStore();
@@ -130,6 +133,14 @@ export default function App() {
         trackEvent('portal_switch', 'فتح عروض الموسم الترويجية عبر رابط العرض', 'marketing');
         setCurrentView('offers');
         return;
+      }
+
+      // Check for FAQ deep-link (?faq=true)
+      if (params.get('faq') === 'true' || params.has('faq')) {
+        trackEvent('faq_opened', 'الانتقال إلى قسم التعليمات والأسئلة الشائعة عبر الرابط', 'support');
+        setTimeout(() => {
+          document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
       }
 
       // Check for multi-platform ad campaign landing parameter (TikTok, Facebook, Instagram, etc.)
@@ -235,6 +246,19 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleOpenFaq = () => {
+    trackEvent('faq_opened', 'التمرير إلى قسم التعليمات والأسئلة الشائعة في الصفحة', 'support');
+    const faqElement = document.getElementById('faq-section');
+    if (faqElement) {
+      faqElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      setCurrentView('home');
+      setTimeout(() => {
+        document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       {/* Top Navigation - Hidden on landing page, product detail, and partner portal for full dedicated focus */}
@@ -308,6 +332,7 @@ export default function App() {
             productId={selectedProductId}
             onBackToShop={() => handleNavigate(previousView === 'admin' ? 'admin' : previousView || 'specialty')}
             onOpenCustomizerModal={handleOpenCustomizer}
+            onSelectProduct={handleSelectProduct}
           />
         )}
 
@@ -377,11 +402,17 @@ export default function App() {
         </Suspense>
       </main>
 
+      {/* Large Embedded FAQ & Guidelines Section (تعليمات وأسئلة شائعة كبيرة مع زر طي بالأسفل) */}
+      {currentView !== 'landing' && currentView !== 'partners' && currentView !== 'admin' && currentView !== 'checkout' && (
+        <FaqSection onOpenCustomizer={handleOpenCustomizer} />
+      )}
+
       {/* Footer - Hidden on landing page and partner portal */}
       {currentView !== 'landing' && currentView !== 'partners' && (
         <Footer
           onNavigate={handleNavigate}
           onOpenCustomizer={handleOpenCustomizer}
+          onOpenFaq={handleOpenFaq}
         />
       )}
 
@@ -417,6 +448,13 @@ export default function App() {
         onOpenCustomizer={handleOpenCustomizer}
         onNavigateToShop={() => handleNavigate('shop')}
         onNavigateToContact={() => handleNavigate('home')}
+      />
+
+      {/* Interactive FAQ Center Modal (قاعدة المعرفة والأسئلة الشائعة) */}
+      <FaqModal
+        isOpen={faqModalOpen}
+        onClose={() => setFaqModalOpen(false)}
+        onOpenCustomizer={handleOpenCustomizer}
       />
 
       {/* User Authentication Modal (Login / Sign Up / Forgot Password) */}

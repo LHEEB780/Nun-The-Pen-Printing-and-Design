@@ -44,17 +44,20 @@ import {
   Star,
   Heart,
 } from 'lucide-react';
-import { ProductReviewsSection } from './ProductReviewsSection';
+import { RecommendedProductsSection } from './RecommendedProductsSection';
 
 interface ProductDetailPageProps {
   productId: string;
   onBackToShop: () => void;
   onOpenCustomizerModal?: (productId?: string) => void;
+  onSelectProduct?: (productId: string) => void;
 }
 
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   productId,
   onBackToShop,
+  onOpenCustomizerModal,
+  onSelectProduct,
 }) => {
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -115,6 +118,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<'specs' | 'guarantees'>('specs');
 
   // Image Navigation Handlers (أزرار تحريك صور المنتج)
   const handleNextImage = (e?: React.MouseEvent) => {
@@ -1023,13 +1027,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   {isAr ? product.descriptionAr : product.descriptionEn}
                 </p>
 
-                {/* Rating & Real Photos Quick Link */}
+                {/* Rating & Certified Craftsmanship Badge */}
                 <div
-                  onClick={() => {
-                    document.getElementById('product-reviews-section')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-xl bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 cursor-pointer group transition-all"
-                  title={isAr ? 'انقر للانتقال لمعرض صور وتقييمات العملاء' : 'Click to jump to customer reviews and photos'}
+                  className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-start"
                 >
                   <div className="flex items-center gap-0.5 text-amber-500">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -1037,8 +1037,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     ))}
                   </div>
                   <span className="text-xs font-mono font-black text-slate-900">4.9</span>
-                  <span className="text-[11px] font-bold text-amber-900 group-hover:text-amber-950 transition-colors">
-                    {isAr ? '• تقييمات العملاء بالصور الواقعية 📸' : '• Verified Reviews with Real Photos 📸'}
+                  <span className="text-[11px] font-bold text-amber-900">
+                    {isAr ? '• جودة وخامات معتمدة 100%' : '• 100% Certified Craftsmanship'}
                   </span>
                 </div>
               </div>
@@ -1225,196 +1225,263 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             3. COMPREHENSIVE PRODUCT DETAILS & TECHNICAL SPECIFICATIONS
             (تفاصيل المنتج الكاملة والمواصفات الفنية المعتمدة)
            ======================================================== */}
-        <div className="pt-8 border-t border-slate-200/80 space-y-8">
+        <div id="product-detail-tabs-section" className="pt-8 border-t border-slate-200/80 space-y-6">
           
-          {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-xs">
-            <div>
-              <div className="flex items-center gap-2 text-amber-900 text-xs font-bold mb-1">
-                <FileText className="w-4 h-4 text-amber-700" />
-                <span>{isAr ? 'دليل المنتج والمواصفات الفنية المعتمدة' : 'Certified Technical Spec Sheet'}</span>
+          {/* Section Header & Tab Controls */}
+          <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-amber-900 text-xs font-bold mb-1">
+                  <FileText className="w-4 h-4 text-amber-700" />
+                  <span>{isAr ? 'دليل وتفاصيل المنتج المعتمدة' : 'Product Technical & Verification Guide'}</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-slate-950">
+                  {isAr ? `المواصفات الفنية وتجارب الاستلام لـ (${product.titleAr})` : `Specs & Delivery Experiences for (${product.titleEn})`}
+                </h2>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-950">
-                {isAr ? `المواصفات الفنية والتفاصيل الهندسية لـ (${product.titleAr})` : `Full Specifications & Engineering Details for (${product.titleEn})`}
-              </h2>
+
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-2xl border border-emerald-200 shrink-0">
+                <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                <span>{isAr ? 'خامات نخب أول ومطابقة للجودة' : 'Premium Certified Materials'}</span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-2xl border border-emerald-200 shrink-0">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>{isAr ? 'خامات نخب أول ومطابقة للجودة' : 'Premium Certified Materials'}</span>
+            {/* Interactive Tab Switcher */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('specs')}
+                className={`px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                  activeDetailTab === 'specs'
+                    ? 'bg-amber-800 text-white shadow-sm shadow-amber-900/20'
+                    : 'bg-slate-100/80 hover:bg-slate-200/80 text-slate-700'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>{isAr ? 'المواصفات الفنية والتصنيع' : 'Technical Specifications'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('guarantees')}
+                className={`px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                  activeDetailTab === 'guarantees'
+                    ? 'bg-amber-800 text-white shadow-sm shadow-amber-900/20'
+                    : 'bg-slate-100/80 hover:bg-slate-200/80 text-slate-700'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isAr ? 'المميزات وضمانات الاستوديو' : 'Features & Studio Guarantees'}</span>
+              </button>
             </div>
           </div>
 
-          {/* Detailed Specs & Features Two-Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-            {/* Column 1 (7 Cols): Specifications Table & Detailed Parameters */}
-            <div className="lg:col-span-7 bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 shadow-sm space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-950 flex items-center justify-center font-bold">
-                    <Layers className="w-4 h-4 text-amber-800" />
+          {/* TAB 1: TECHNICAL SPECIFICATIONS & SIZES */}
+          {activeDetailTab === 'specs' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Column 1 (7 Cols): Specifications Table & Detailed Parameters */}
+                <div className="lg:col-span-7 bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-950 flex items-center justify-center font-bold">
+                        <Layers className="w-4 h-4 text-amber-800" />
+                      </div>
+                      <h3 className="text-sm font-black text-slate-900">
+                        {isAr ? 'جدول المواصفات الفنية التفصيلية:' : 'Detailed Technical Specifications:'}
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {isAr ? `${(product.specifications?.length || 0) + 2} مواصفات مسجلة` : `${(product.specifications?.length || 0) + 2} parameters`}
+                    </span>
                   </div>
-                  <h3 className="text-sm font-black text-slate-900">
-                    {isAr ? 'جدول المواصفات الفنية التفصيلية:' : 'Detailed Technical Specifications:'}
-                  </h3>
-                </div>
-                <span className="text-[11px] font-bold text-slate-400">
-                  {isAr ? `${(product.specifications?.length || 0) + 2} مواصفات مسجلة` : `${(product.specifications?.length || 0) + 2} parameters`}
-                </span>
-              </div>
 
-              {/* Table of Specifications */}
-              <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
-                {product.specifications && product.specifications.length > 0 ? (
-                  product.specifications.map((spec, idx) => (
-                    <div
-                      key={idx}
-                      className={`grid grid-cols-1 sm:grid-cols-3 p-3.5 text-xs transition-colors ${
-                        idx % 2 === 0 ? 'bg-slate-50/70' : 'bg-white'
-                      }`}
-                    >
+                  {/* Table of Specifications */}
+                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
+                    {product.specifications && product.specifications.length > 0 ? (
+                      product.specifications.map((spec, idx) => (
+                        <div
+                          key={idx}
+                          className={`grid grid-cols-1 sm:grid-cols-3 p-3.5 text-xs transition-colors ${
+                            idx % 2 === 0 ? 'bg-slate-50/70' : 'bg-white'
+                          }`}
+                        >
+                          <span className="font-bold text-slate-700 sm:col-span-1">
+                            {isAr ? spec.keyAr : spec.keyEn}
+                          </span>
+                          <span className="font-semibold text-slate-900 sm:col-span-2 mt-0.5 sm:mt-0">
+                            {isAr ? spec.valAr : spec.valEn}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-xs text-slate-400">
+                        {isAr ? 'المواصفات الفنية مطابقة للمواصفات القياسية للاستوديو' : 'Standard specifications apply'}
+                      </div>
+                    )}
+                    
+                    {/* Additional Standard Rows */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 p-3.5 text-xs bg-white">
                       <span className="font-bold text-slate-700 sm:col-span-1">
-                        {isAr ? spec.keyAr : spec.keyEn}
+                        {isAr ? 'مدة التنفيذ والتسليم' : 'Lead & Delivery Time'}
                       </span>
-                      <span className="font-semibold text-slate-900 sm:col-span-2 mt-0.5 sm:mt-0">
-                        {isAr ? spec.valAr : spec.valEn}
+                      <span className="font-semibold text-emerald-800 sm:col-span-2 mt-0.5 sm:mt-0">
+                        {isAr ? product.leadTimeAr : product.leadTimeEn}
                       </span>
                     </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-xs text-slate-400">
-                    {isAr ? 'المواصفات الفنية مطابقة للمواصفات القياسية للاستوديو' : 'Standard specifications apply'}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 p-3.5 text-xs bg-slate-50/70">
+                      <span className="font-bold text-slate-700 sm:col-span-1">
+                        {isAr ? 'الحد الأدنى للطلب (MOQ)' : 'Minimum Order'}
+                      </span>
+                      <span className="font-semibold text-slate-900 sm:col-span-2 mt-0.5 sm:mt-0">
+                        {isAr ? `${product.minQuantity} قطعة مع إمكانية التخصيص الكامل` : `${product.minQuantity} units with full branding`}
+                      </span>
+                    </div>
                   </div>
-                )}
-                
-                {/* Additional Standard Rows */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 p-3.5 text-xs bg-white">
-                  <span className="font-bold text-slate-700 sm:col-span-1">
-                    {isAr ? 'مدة التنفيذ والتسليم' : 'Lead & Delivery Time'}
-                  </span>
-                  <span className="font-semibold text-emerald-800 sm:col-span-2 mt-0.5 sm:mt-0">
-                    {isAr ? product.leadTimeAr : product.leadTimeEn}
-                  </span>
+
+                  {/* Extended Overview Paragraph */}
+                  <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/60 text-xs text-slate-700 space-y-1.5">
+                    <span className="font-black text-amber-950 block text-[11px] uppercase tracking-wide">
+                      {isAr ? 'نبذة هندسية عن المنتج وجودة التصنيع:' : 'Engineering & Production Brief:'}
+                    </span>
+                    <p className="leading-relaxed">
+                      {isAr ? product.descriptionAr : product.descriptionEn}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 p-3.5 text-xs bg-slate-50/70">
-                  <span className="font-bold text-slate-700 sm:col-span-1">
-                    {isAr ? 'الحد الأدنى للطلب (MOQ)' : 'Minimum Order'}
-                  </span>
-                  <span className="font-semibold text-slate-900 sm:col-span-2 mt-0.5 sm:mt-0">
-                    {isAr ? `${product.minQuantity} قطعة مع إمكانية التخصيص الكامل` : `${product.minQuantity} units with full branding`}
-                  </span>
-                </div>
-              </div>
+                {/* Column 2 (5 Cols): Dimensions Matrix & Size Options */}
+                <div className="lg:col-span-5 space-y-5">
+                  {/* Dimensions Breakdown Card */}
+                  {product.dimensions && product.dimensions.length > 0 && (
+                    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-3.5">
+                      <div className="flex items-center gap-2.5 pb-2.5 border-b border-slate-100">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-950 flex items-center justify-center font-bold">
+                          <Ruler className="w-4 h-4 text-purple-800" />
+                        </div>
+                        <h3 className="text-sm font-black text-slate-900">
+                          {isAr ? 'الأحجام والمقاسات المتوفرة للتصنيع:' : 'Available Size Matrix:'}
+                        </h3>
+                      </div>
 
-              {/* Extended Overview Paragraph */}
-              <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/60 text-xs text-slate-700 space-y-1.5">
-                <span className="font-black text-amber-950 block text-[11px] uppercase tracking-wide">
-                  {isAr ? 'نبذة هندسية عن المنتج وجودة التصنيع:' : 'Engineering & Production Brief:'}
-                </span>
-                <p className="leading-relaxed">
-                  {isAr ? product.descriptionAr : product.descriptionEn}
-                </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {product.dimensions.map((dim) => (
+                          <div
+                            key={dim.id}
+                            className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs flex flex-col justify-between"
+                          >
+                            <span className="font-bold text-slate-900">
+                              {isAr ? dim.labelAr : dim.labelEn}
+                            </span>
+                            <span className="text-[11px] font-mono font-bold text-amber-900 mt-1">
+                              {dim.widthCm} × {dim.heightCm} سم
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Packaging & Shipping Protection Standards */}
+                  <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200/90 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>{isAr ? 'معايير التغليف وحماية الشحن' : 'Packaging & Shipping Protection'}</span>
+                    </div>
+
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {isAr
+                        ? 'تغليف مقوّى مع طبقات عازلة للصدمات وزوايا حماية مصممة خصيصاً لضمان وصول المنتج سليماً دون أي خدوش إلى باب بيتك أو موقع مشروعك.'
+                        : 'Reinforced protective packaging engineered to prevent transit scuffs and ensure pristine delivery to your doorstep.'}
+                    </p>
+
+                    <div className="flex items-center gap-2 pt-1 text-[11px] font-bold text-emerald-800">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isAr ? 'فحص جودة دقيق قبل كل شحنة' : 'Pre-dispatch quality inspection'}</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
+          )}
 
-            {/* Column 2 (5 Cols): Features & Production Guarantees */}
-            <div className="lg:col-span-5 space-y-5">
-              
-              {/* Features List Card */}
-              {product.featuresAr && product.featuresAr.length > 0 && (
-                <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
+          {/* TAB 2: FEATURES & STUDIO GUARANTEES */}
+          {activeDetailTab === 'guarantees' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Features List Card */}
+                <div className="lg:col-span-7 bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
                   <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                     <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-950 flex items-center justify-center font-bold">
                       <Sparkles className="w-4 h-4 text-emerald-700" />
                     </div>
                     <h3 className="text-sm font-black text-slate-900">
-                      {isAr ? 'أهم المميزات ونقاط القوة:' : 'Key Engineering Features:'}
+                      {isAr ? 'أهم المميزات ونقاط القوة الهندسية:' : 'Key Engineering Features:'}
                     </h3>
                   </div>
 
-                  <div className="space-y-2.5">
-                    {(isAr ? product.featuresAr : product.featuresEn).map((feat, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-2.5 text-xs text-slate-800"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <span className="font-semibold leading-relaxed">{feat}</span>
+                  <div className="space-y-3">
+                    {product.featuresAr && product.featuresAr.length > 0 ? (
+                      (isAr ? product.featuresAr : product.featuresEn).map((feat, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-3 text-xs text-slate-800"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <span className="font-semibold leading-relaxed">{feat}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-slate-50 text-xs text-slate-500">
+                        {isAr ? 'صُنعت وفق أعلى معايير استوديو نُون والقَلَم' : 'Crafted to premium Noon & Pen atelier standards'}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Dimensions Breakdown Card */}
-              {product.dimensions && product.dimensions.length > 0 && (
-                <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-3.5">
-                  <div className="flex items-center gap-2.5 pb-2.5 border-b border-slate-100">
-                    <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-950 flex items-center justify-center font-bold">
-                      <Ruler className="w-4 h-4 text-purple-800" />
+                {/* Noon & Pen Quality Guarantees Card */}
+                <div className="lg:col-span-5 space-y-5">
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-950 text-white shadow-md space-y-4">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>{isAr ? 'ضمانات استوديو نُون والقَلَم' : 'Noon & Pen Studio Guarantees'}</span>
                     </div>
-                    <h3 className="text-sm font-black text-slate-900">
-                      {isAr ? 'الأحجام والمقاسات المتوفرة للتصنيع:' : 'Available Size Matrix:'}
-                    </h3>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {product.dimensions.map((dim) => (
-                      <div
-                        key={dim.id}
-                        className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs flex flex-col justify-between"
-                      >
-                        <span className="font-bold text-slate-900">
-                          {isAr ? dim.labelAr : dim.labelEn}
-                        </span>
-                        <span className="text-[11px] font-mono font-bold text-amber-900 mt-1">
-                          {dim.widthCm} × {dim.heightCm} سم
-                        </span>
+                    <div className="space-y-3 text-xs text-slate-300">
+                      <div className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <span>{isAr ? 'بروفة رقمية معتمدة عبر واتساب وحسابك قبل بدء القص والطباعة' : 'Digital proof sent to account & WhatsApp before cutting'}</span>
                       </div>
-                    ))}
+                      <div className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <span>{isAr ? 'معايرة الألوان طبقا لأعلى معايير Pantone & CMYK الدولية' : 'Precision Pantone & CMYK color calibration'}</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <span>{isAr ? 'إعادة طباعة أو استبدال فوري مجاني في حال وجود أي خطأ مصنعي' : 'Free instant reprint guarantee against manufacturing defects'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Noon & Pen Quality Guarantees */}
-              <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-950 text-white shadow-md space-y-3">
-                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>{isAr ? 'ضمانات استوديو نُون والقَلَم' : 'Noon & Pen Studio Guarantees'}</span>
-                </div>
-
-                <div className="space-y-2 text-[11px] text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>{isAr ? 'بروفة رقمية معتمدة عبر واتساب وحسابك قبل بدء القص والطباعة' : 'Digital proof sent to account & WhatsApp before cutting'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>{isAr ? 'معايرة الألوان طبقا لأعلى معايير Pantone & CMYK الدولية' : 'Precision Pantone & CMYK color calibration'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>{isAr ? 'إعادة طباعة أو استبدال فوري مجاني في حال وجود أي خطأ مصنعي' : 'Free instant reprint guarantee against manufacturing defects'}</span>
-                  </div>
-                </div>
               </div>
-
             </div>
-
-          </div>
+          )}
 
         </div>
 
-        {/* Customer Reviews & Received Product Photos Section */}
-        <div id="product-reviews-section">
-          <ProductReviewsSection
-            productId={product.id}
-            productTitleAr={product.titleAr}
-            productTitleEn={product.titleEn}
-            categoryLabelAr={product.categoryLabelAr}
-            categoryLabelEn={product.categoryLabelEn}
+        {/* Recommended & Similar Products Section (منتجات مرشحة ومقاربة للمنتج) */}
+        <div id="recommended-products-section">
+          <RecommendedProductsSection
+            currentProduct={product}
+            allProducts={productsList}
+            onSelectProduct={onSelectProduct}
+            onOpenCustomizerModal={onOpenCustomizerModal}
+            onNavigateToShop={onBackToShop}
           />
         </div>
 
