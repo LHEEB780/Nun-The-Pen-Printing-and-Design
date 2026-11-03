@@ -5,6 +5,181 @@ import { OrderRecord } from './useCartStore';
 
 export type AdminRole = 'super_admin' | 'sales_manager' | 'inventory_manager' | 'designer';
 
+export type AdminDashboardTab =
+  | 'analytics'
+  | 'autonomous_agents'
+  | 'sales_partners'
+  | 'qr_codes'
+  | 'commissions_wallet'
+  | 'orchestrator'
+  | 'campaign_roas'
+  | 'campaigns'
+  | 'offers'
+  | 'content'
+  | 'form_builder'
+  | 'products'
+  | 'orders'
+  | 'payment_shipping'
+  | 'users';
+
+export interface TabDefinition {
+  id: AdminDashboardTab;
+  labelAr: string;
+  labelEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+}
+
+export const ALL_ADMIN_TABS: TabDefinition[] = [
+  {
+    id: 'analytics',
+    labelAr: 'لوحة التحليلات والإيرادات',
+    labelEn: 'Analytics & Revenue',
+    descriptionAr: 'مؤشرات المبيعات، الرسوم البيانية، والأرباح التفصيلية',
+    descriptionEn: 'Sales metrics, charts, and revenue breakdowns',
+  },
+  {
+    id: 'autonomous_agents',
+    labelAr: '🤖 فريق الوكلاء الموظفين (Multi-Agent)',
+    labelEn: '🤖 Autonomous Multi-Agent Staff',
+    descriptionAr: 'إدارة الذكاء الاصطناعي المستقل وتوزيع المهام الآلية',
+    descriptionEn: 'Autonomous AI staff management and task delegation',
+  },
+  {
+    id: 'sales_partners',
+    labelAr: 'شركاء نون والقلم (فريق المبيعات)',
+    labelEn: 'Sales Partners & BD',
+    descriptionAr: 'إدارة المسوقين، شركاء التوزيع، وروابط الإحالة',
+    descriptionEn: 'Affiliates, distributors, and referral link management',
+  },
+  {
+    id: 'qr_codes',
+    labelAr: 'باركودات QR المطبوعة للحملات',
+    labelEn: 'Printable QR Campaigns',
+    descriptionAr: 'توليد باركودات QR ذكية للمطبوعات والعلب والفعاليات',
+    descriptionEn: 'Generate dynamic QR codes for print, packaging, and events',
+  },
+  {
+    id: 'commissions_wallet',
+    labelAr: 'محفظة العمولات والتحويلات',
+    labelEn: 'Commissions & Payouts',
+    descriptionAr: 'سحب الأرباح، تحويلات زين كاش، ومحفظة المسوقين',
+    descriptionEn: 'Profit withdrawals, ZainCash payouts, and partner wallets',
+  },
+  {
+    id: 'orchestrator',
+    labelAr: '⚡ موجّه الحملات بالذكاء الاصطناعي (AI Orchestrator)',
+    labelEn: '⚡ AI Campaign Orchestrator',
+    descriptionAr: 'توليد المحتوى الإعلاني واستهداف الجمهور آلياً',
+    descriptionEn: 'Automated ad creative generation and targeting',
+  },
+  {
+    id: 'campaign_roas',
+    labelAr: '📊 العائد الإعلاني ومبيعات الحملات (ROAS)',
+    labelEn: '📊 Campaign ROAS & Sales Attribution',
+    descriptionAr: 'تتبع صرف الإعلانات وعائد الإنفاق الإعلاني الحقيقي',
+    descriptionEn: 'Track ad spend, attribution, and real ROAS ratios',
+  },
+  {
+    id: 'campaigns',
+    labelAr: 'صفحات هبوط تيك توك والحملات',
+    labelEn: 'TikTok Landing Pages & Campaigns',
+    descriptionAr: 'تخصيص صفحات الهبوط السريعة وإعلانات تيك توك',
+    descriptionEn: 'Fast landing pages for TikTok and seasonal campaigns',
+  },
+  {
+    id: 'offers',
+    labelAr: 'عروض الموسم والتخفيضات',
+    labelEn: 'Seasonal Deals & Offers',
+    descriptionAr: 'كوبونات الخصم، الباقات الترويجية، والعروض المؤقتة',
+    descriptionEn: 'Discount coupons, promotional bundles, and flash sales',
+  },
+  {
+    id: 'content',
+    labelAr: 'إدارة المحتوى والمقالات (CMS)',
+    labelEn: 'CMS Content & Articles',
+    descriptionAr: 'تعديل نصوص المتجر، مقالات المدونة، ومعرض الأعمال',
+    descriptionEn: 'Store copy, blog articles, and project showcases',
+  },
+  {
+    id: 'form_builder',
+    labelAr: 'منشئ النماذج الديناميكية',
+    labelEn: 'Dynamic Form Builder',
+    descriptionAr: 'تخصيص حقول الطلب المباشر وخيارات التصنيع',
+    descriptionEn: 'Custom fields for direct custom orders and fabrication',
+  },
+  {
+    id: 'products',
+    labelAr: 'إدارة المنتجات والتسعير المتدرج',
+    labelEn: 'Products & Tiered Pricing',
+    descriptionAr: 'كتالوج المنتجات، خصومات الجملة، ومخزون الأكريليك والكرتون',
+    descriptionEn: 'Product catalog, bulk tiers, and material inventory',
+  },
+  {
+    id: 'orders',
+    labelAr: 'خط إنتاج الورشة والطلبات',
+    labelEn: 'Workshop Pipeline & Orders',
+    descriptionAr: 'متابعة مراحل التنفيذ، البروفات الليزرية، وفواتير الزبائن',
+    descriptionEn: 'Production workflow, laser proofs, and customer invoices',
+  },
+  {
+    id: 'payment_shipping',
+    labelAr: 'بوابات الدفع والشحن الدولي',
+    labelEn: 'Payments & Global Shipping',
+    descriptionAr: 'إدارة وتفعيل بوابات الدفع الإلكتروني وشركات الشحن',
+    descriptionEn: 'Configure payment gateways and international carriers',
+  },
+  {
+    id: 'users',
+    labelAr: 'إدارة الفريق والأدوار (RBAC)',
+    labelEn: 'Staff & RBAC Management',
+    descriptionAr: 'تحديد صلاحيات الموظفين، إضافة أعضاء جدد، وضبط التبويبات',
+    descriptionEn: 'Staff privileges, member onboarding, and tab access control',
+  },
+];
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<AdminRole, AdminDashboardTab[]> = {
+  super_admin: [
+    'analytics',
+    'autonomous_agents',
+    'sales_partners',
+    'qr_codes',
+    'commissions_wallet',
+    'orchestrator',
+    'campaign_roas',
+    'campaigns',
+    'offers',
+    'content',
+    'form_builder',
+    'products',
+    'orders',
+    'payment_shipping',
+    'users',
+  ],
+  sales_manager: [
+    'analytics',
+    'autonomous_agents',
+    'sales_partners',
+    'qr_codes',
+    'commissions_wallet',
+    'orchestrator',
+    'campaign_roas',
+    'campaigns',
+    'offers',
+    'orders',
+    'payment_shipping',
+  ],
+  inventory_manager: [
+    'products',
+    'orders',
+  ],
+  designer: [
+    'orders',
+    'form_builder',
+    'content',
+  ],
+};
+
 export interface StaffMember {
   id: string;
   name: string;
@@ -14,6 +189,7 @@ export interface StaffMember {
   department: string;
   status: 'active' | 'suspended';
   lastActive: string;
+  customPermissions?: AdminDashboardTab[];
 }
 
 export type CustomFieldType = 'text' | 'dropdown' | 'upload' | 'color_picker' | 'number';
@@ -132,6 +308,15 @@ interface AdminStore {
   updateStaffRole: (staffId: string, role: AdminRole) => void;
   addStaffMember: (staff: Omit<StaffMember, 'id' | 'lastActive'>) => void;
   toggleStaffStatus: (staffId: string) => void;
+
+  // Live Dynamic Tab & Role Permissions State
+  rolePermissions: Record<AdminRole, AdminDashboardTab[]>;
+  updateRolePermissions: (role: AdminRole, tabs: AdminDashboardTab[]) => void;
+  toggleRoleTabPermission: (role: AdminRole, tab: AdminDashboardTab) => void;
+  resetRolePermissions: () => void;
+  updateStaffCustomPermissions: (staffId: string, tabs: AdminDashboardTab[]) => void;
+  toggleStaffTabPermission: (staffId: string, tab: AdminDashboardTab) => void;
+  getAllowedTabsForRole: (role: AdminRole, staffId?: string) => AdminDashboardTab[];
 
   // Dynamic Campaign Landing Page State
   campaign: LandingPageCampaign;
@@ -679,7 +864,7 @@ export const INITIAL_CAMPAIGNS_ROAS: CampaignROASRecord[] = [
 
 export const useAdminStore = create<AdminStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       currentRole: 'super_admin',
       setCurrentRole: (role) => set({ currentRole: role }),
 
@@ -781,6 +966,69 @@ export const useAdminStore = create<AdminStore>()(
             s.id === staffId ? { ...s, status: s.status === 'active' ? 'suspended' : 'active' } : s
           ),
         }));
+      },
+
+      // Live Dynamic Tab & Role Permissions Implementation
+      rolePermissions: DEFAULT_ROLE_PERMISSIONS,
+      updateRolePermissions: (role, tabs) => {
+        set((state) => ({
+          rolePermissions: {
+            ...state.rolePermissions,
+            [role]: tabs,
+          },
+        }));
+      },
+      toggleRoleTabPermission: (role, tab) => {
+        set((state) => {
+          const currentTabs = state.rolePermissions[role] || DEFAULT_ROLE_PERMISSIONS[role] || [];
+          const exists = currentTabs.includes(tab);
+          const updatedTabs = exists
+            ? currentTabs.filter((t) => t !== tab)
+            : [...currentTabs, tab];
+          return {
+            rolePermissions: {
+              ...state.rolePermissions,
+              [role]: updatedTabs,
+            },
+          };
+        });
+      },
+      resetRolePermissions: () => {
+        set(() => ({
+          rolePermissions: DEFAULT_ROLE_PERMISSIONS,
+        }));
+      },
+      updateStaffCustomPermissions: (staffId, tabs) => {
+        set((state) => ({
+          staffMembers: state.staffMembers.map((s) =>
+            s.id === staffId ? { ...s, customPermissions: tabs } : s
+          ),
+        }));
+      },
+      toggleStaffTabPermission: (staffId, tab) => {
+        set((state) => ({
+          staffMembers: state.staffMembers.map((s) => {
+            if (s.id !== staffId) return s;
+            const currentTabs =
+              s.customPermissions ||
+              state.rolePermissions[s.role] ||
+              DEFAULT_ROLE_PERMISSIONS[s.role] ||
+              [];
+            const exists = currentTabs.includes(tab);
+            const updated = exists ? currentTabs.filter((t) => t !== tab) : [...currentTabs, tab];
+            return { ...s, customPermissions: updated };
+          }),
+        }));
+      },
+      getAllowedTabsForRole: (role, staffId) => {
+        const state = get();
+        if (staffId) {
+          const staff = state.staffMembers.find((s) => s.id === staffId);
+          if (staff && staff.customPermissions && staff.customPermissions.length > 0) {
+            return staff.customPermissions;
+          }
+        }
+        return state.rolePermissions?.[role] || DEFAULT_ROLE_PERMISSIONS[role] || [];
       },
 
       // Dynamic Multi-Platform Campaign Landing Page State & Actions
@@ -1129,6 +1377,7 @@ export const useAdminStore = create<AdminStore>()(
         customFormFields: state.customFormFields,
         adminOrders: state.adminOrders,
         staffMembers: state.staffMembers,
+        rolePermissions: state.rolePermissions,
         campaign: state.campaign,
         campaignRoasRecords: state.campaignRoasRecords,
       }),

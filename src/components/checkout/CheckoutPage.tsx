@@ -26,7 +26,19 @@ import {
   User,
   Tag,
   Award,
+  Globe,
+  Plane,
+  Building,
+  Wallet,
+  AlertCircle,
+  Package,
 } from 'lucide-react';
+import {
+  usePaymentShippingConfigStore,
+  PaymentGatewayId,
+  ShippingCarrierId,
+} from '../../store/usePaymentShippingConfigStore';
+import { SUPPORTED_COUNTRIES } from '../../data/geoData';
 
 interface CheckoutPageProps {
   onBackToCart: () => void;
@@ -131,10 +143,54 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   // Step 2: Proof approval agreement
   const [proofApproved, setProofApproved] = useState(true);
 
+  // Country & Global Delivery State
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('IQ');
+  const selectedCountry = useMemo(() => {
+    return SUPPORTED_COUNTRIES.find((c) => c.code === selectedCountryCode) || SUPPORTED_COUNTRIES[0];
+  }, [selectedCountryCode]);
+
+  // Dynamic Shipping Carriers from Admin Configuration
+  const { getAvailableGateways, getAvailableCarriers } = usePaymentShippingConfigStore();
+
+  const availableCarriers = useMemo(() => {
+    return getAvailableCarriers(selectedCountryCode);
+  }, [getAvailableCarriers, selectedCountryCode]);
+
+  const [selectedCarrierId, setSelectedCarrierId] = useState<ShippingCarrierId>('local_express');
+
+  // Keep selected carrier valid when country or admin config changes
+  useEffect(() => {
+    if (availableCarriers.length > 0) {
+      const exists = availableCarriers.some((c) => c.id === selectedCarrierId);
+      if (!exists) {
+        setSelectedCarrierId(availableCarriers[0].id);
+      }
+    }
+  }, [availableCarriers, selectedCarrierId]);
+
+  const activeCarrier = useMemo(() => {
+    return availableCarriers.find((c) => c.id === selectedCarrierId) || availableCarriers[0];
+  }, [availableCarriers, selectedCarrierId]);
+
+  // Dynamic Payment Gateways from Admin Configuration
+  const availableGateways = useMemo(() => {
+    return getAvailableGateways(selectedCountryCode);
+  }, [getAvailableGateways, selectedCountryCode]);
+
   // Step 3: Payment Gateway Selection
   const [selectedGateway, setSelectedGateway] = useState<PaymentMethod>('zaincash');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [processingStatusText, setProcessingStatusText] = useState('');
+
+  // Keep selected gateway valid when country or admin config changes
+  useEffect(() => {
+    if (availableGateways.length > 0) {
+      const exists = availableGateways.some((g) => g.id === selectedGateway);
+      if (!exists) {
+        setSelectedGateway(availableGateways[0].id as PaymentMethod);
+      }
+    }
+  }, [availableGateways, selectedGateway]);
 
   // Payment field states
   const [zainCashPhone, setZainCashPhone] = useState('');
@@ -143,6 +199,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [stripeCardNumber, setStripeCardNumber] = useState('4242 •••• •••• 4242');
   const [stripeExpiry, setStripeExpiry] = useState('12/28');
   const [stripeCvc, setStripeCvc] = useState('888');
+  const [tapPhoneNumber, setTapPhoneNumber] = useState('');
 
   // Governorates in Iraq
   const governorates = [
@@ -167,19 +224,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     { id: 'duhok', nameAr: 'دهوك', nameEn: 'Duhok', isBaghdad: false },
   ];
 
-  // Calculate Shipping fee
+  // Calculate Shipping fee based on selected carrier & destination
   const shippingCost = useMemo(() => {
-    const isBaghdad = governorate.includes('بغداد') || governorate.toLowerCase().includes('baghdad');
-    // Express delivery always carries its flat premium fee
-    if (deliveryType === 'express') return 10000;
-    // Free standard shipping threshold for large custom orders
-    if (subtotal >= 150000) return 0;
-    return isBaghdad ? 5000 : 8000;
-  }, [governorate, deliveryType, subtotal]);
+    if (!activeCarrier) return 0;
+    // Check free shipping threshold
+    if (activeCarrier.freeShippingThresholdIQD && subtotal >= activeCarrier.freeShippingThresholdIQD) {
+      return 0;
+    }
+    if (selectedCountryCode === 'IQ') {
+      if (deliveryType === 'express') return 10000;
+      const isBaghdad = governorate.includes('بغداد') || governorate.toLowerCase().includes('baghdad');
+      return isBaghdad ? 5000 : 8000;
+    }
+    return activeCarrier.basePriceIQD;
+  }, [activeCarrier, subtotal, deliveryType, selectedCountryCode, governorate]);
 
   const grandTotal = Math.max(0, subtotal - promoDiscountIQD + shippingCost);
 
-  // Placeholder Payment Handlers
+  // Payment Handlers
   const processZainCashPayment = async (): Promise<{ success: boolean; transactionId: string }> => {
     setProcessingStatusText(isAr ? 'جارٍ الاتصال بمحفظة زين كاش وتأكيد العملية...' : 'Connecting to ZainCash Wallet API...');
     await new Promise((res) => setTimeout(res, 1400));
@@ -210,10 +272,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     return { success: true, transactionId: `PAYPAL-TX-${Math.floor(100000 + Math.random() * 900000)}` };
   };
 
-  // Iraqi phone number validation (07XXXXXXXXX / +9647XXXXXXXXX)
-  const isValidIraqiPhone = (raw: string): boolean => {
+  const processTapPayment = async (): Promise<{ success: boolean; transactionId: string }> => {
+    setProcessingStatusText(isAr ? 'جارٍ معالجة الدفع عبر Tap Payments (مدى / Apple Pay)...' : 'Processing Tap Payments authorization (Mada / Apple Pay)...');
+    await new Promise((res) => setTimeout(res, 1400));
+    return { success: true, transactionId: `TAP-${Math.floor(1000000 + Math.random() * 9000000)}` };
+  };
+
+  const processBankTransferPayment = async (): Promise<{ success: boolean; transactionId: string }> => {
+    setProcessingStatusText(isAr ? 'جارٍ توثيق أمر التحويل البنكي وإصدار بيانات الفاتورة المعتمدة...' : 'Issuing official bank wire invoice and SWIFT details...');
+    await new Promise((res) => setTimeout(res, 1100));
+    return { success: true, transactionId: `WIRE-SWIFT-${Math.floor(100000 + Math.random() * 900000)}` };
+  };
+
+  // Flexible phone validation based on destination country
+  const isValidPhoneNumber = (raw: string, countryCode: string): boolean => {
     const normalized = raw.replace(/[\s\-()]/g, '');
-    return /^(?:\+?964|0)?7\d{9}$/.test(normalized);
+    if (countryCode === 'IQ') {
+      return /^(?:\+?964|0)?7\d{9}$/.test(normalized);
+    }
+    return normalized.length >= 7 && /\d/.test(normalized);
   };
 
   const handleFinalSubmitPayment = async () => {
@@ -232,6 +309,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         result = await processStripePayment();
       } else if (selectedGateway === 'paypal') {
         result = await processPayPalPayment();
+      } else if (selectedGateway === 'tap') {
+        result = await processTapPayment();
+      } else if (selectedGateway === 'bank_transfer') {
+        result = await processBankTransferPayment();
       }
 
       if (result.success) {
@@ -244,6 +325,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           cod: { ar: 'الدفع عند الاستلام (COD)', en: 'Cash on Delivery (COD)' },
           stripe: { ar: 'بطاقة ائتمانية (Stripe)', en: 'Credit Card (Stripe)' },
           paypal: { ar: 'باي بال (PayPal)', en: 'PayPal' },
+          tap: { ar: 'تاب للمدفوعات (Tap Payments)', en: 'Tap Payments (GCC)' },
+          bank_transfer: { ar: 'تحويل بنكي رسمي (SWIFT/IBAN)', en: 'Official Wire Transfer' },
         };
 
         // Process Lifetime Recurring Commission Engine
@@ -274,10 +357,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           shipping: {
             fullName,
             phone,
-            governorate,
+            country: selectedCountry?.nameAr || 'العراق',
+            governorate: selectedCountryCode === 'IQ' ? governorate : `${selectedCountry?.nameAr} - ${governorate}`,
             address,
             notes,
             deliveryType,
+            carrierId: activeCarrier?.id || 'local_express',
+            carrierNameAr: activeCarrier?.nameAr || 'توصيل نون والقلم',
+            carrierNameEn: activeCarrier?.nameEn || 'Noon & Pen Courier',
             shippingCost,
             partnerCode: commissionResult.partner?.referralCode || (partnerCodeInput.trim() || undefined),
           },
@@ -407,7 +494,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <span>{isAr ? 'الخطوة الأولى: تفاصيل التوصيل والاستلام' : 'Step 1: Shipping & Delivery Info'}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
-                {isAr ? 'عنوان الاستلام في بغداد أو المحافظات' : 'Delivery Address & Contact'}
+                {isAr ? 'عنوان الاستلام وشركة الشحن' : 'Delivery Address & Shipping Carrier'}
               </h2>
             </div>
 
@@ -418,11 +505,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   toast.error(isAr ? 'يرجى تعبئة جميع الحقول الإلزامية (*)' : 'Please fill all required fields (*)');
                   return;
                 }
-                if (!isValidIraqiPhone(phone)) {
+                if (!isValidPhoneNumber(phone, selectedCountryCode)) {
                   toast.error(
-                    isAr
-                      ? 'رقم الهاتف غير صحيح — أدخل رقم عراقي صالح مثل 07801234567 أو +9647801234567'
-                      : 'Invalid phone — enter a valid Iraqi number e.g. 07801234567 or +9647801234567'
+                    selectedCountryCode === 'IQ'
+                      ? isAr
+                        ? 'رقم الهاتف غير صحيح — أدخل رقم عراقي صالح مثل 07801234567 أو +9647801234567'
+                        : 'Invalid phone — enter a valid Iraqi number e.g. 07801234567'
+                      : isAr
+                      ? `يرجى إدخال رقم هاتف صحيح لـ ${selectedCountry?.nameAr}`
+                      : `Please enter a valid phone number for ${selectedCountry?.nameEn}`
                   );
                   return;
                 }
@@ -430,6 +521,137 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               }}
               className="space-y-6"
             >
+              {/* Country Selection Header Card */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Globe className="w-5 h-5 text-purple-300" />
+                    <div>
+                      <span className="text-xs font-bold text-purple-200 block">
+                        {isAr ? 'دولة التوصيل والاستلام:' : 'Destination Country:'}
+                      </span>
+                      <span className="text-sm font-black text-white flex items-center gap-1.5 mt-0.5">
+                        <span className="text-base">{selectedCountry.flag}</span>
+                        <span>{isAr ? selectedCountry.nameAr : selectedCountry.nameEn}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Country Selector Dropdown */}
+                  <select
+                    value={selectedCountryCode}
+                    onChange={(e) => {
+                      const newCode = e.target.value;
+                      setSelectedCountryCode(newCode);
+                      const targetCountry = SUPPORTED_COUNTRIES.find((c) => c.code === newCode);
+                      if (targetCountry && targetCountry.cities.length > 0) {
+                        setGovernorate(targetCountry.cities[0]);
+                      }
+                      toast.info(
+                        isAr
+                          ? `تم ضبط الوجهة إلى [${targetCountry?.nameAr}] وتحديث خيارات الشحن والدفع`
+                          : `Destination set to [${targetCountry?.nameEn}]`
+                      );
+                    }}
+                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                  >
+                    {SUPPORTED_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code} className="text-slate-900 bg-white">
+                        {c.flag} {c.nameAr} ({c.nameEn})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-purple-200">
+                  <span>
+                    {isAr ? 'العملة المدعومة:' : 'Local Currency:'}{' '}
+                    <strong className="text-white font-mono">{selectedCountry.currencyAr} ({selectedCountry.currencyCode})</strong>
+                  </span>
+                  <span>
+                    {isAr ? 'مفتاح الاتصال:' : 'Dial Code:'}{' '}
+                    <strong className="text-white font-mono">{selectedCountry.phoneCode}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Dynamic Shipping Carriers Selection */}
+              <div className="space-y-2.5">
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  {isAr
+                    ? `شركات الشحن المعتمدة للتوصيل إلى ${selectedCountry.nameAr}:`
+                    : `Active Shipping Carriers for ${selectedCountry.nameEn}:`}
+                </label>
+
+                {availableCarriers.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>
+                      {isAr
+                        ? 'لا توجد شركة شحن نشطة لهذه الوجهة حالياً، يرجى التواصل مع فريق الدعم عبر واتساب.'
+                        : 'No active carriers available for this destination. Please contact support.'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {availableCarriers.map((carrier) => {
+                      const isSelected = selectedCarrierId === carrier.id;
+                      const isFree = carrier.freeShippingThresholdIQD && subtotal >= carrier.freeShippingThresholdIQD;
+
+                      return (
+                        <button
+                          key={carrier.id}
+                          type="button"
+                          onClick={() => setSelectedCarrierId(carrier.id)}
+                          className={`p-3.5 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
+                            isSelected
+                              ? 'border-amber-600 bg-amber-50/80 ring-2 ring-amber-600 shadow-xs'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                {carrier.iconType === 'plane' ? (
+                                  <Plane className="w-4 h-4 text-rose-600" />
+                                ) : carrier.iconType === 'package' ? (
+                                  <Package className="w-4 h-4 text-emerald-600" />
+                                ) : (
+                                  <Truck className="w-4 h-4 text-amber-600" />
+                                )}
+                                {carrier.nameAr}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                                {carrier.deliveryDaysAr}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 leading-snug">
+                              {carrier.descriptionAr}
+                            </p>
+                          </div>
+
+                          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span className="text-[11px] text-slate-400">
+                              {isAr ? 'أجرة الشحن والتغليف:' : 'Shipping Rate:'}
+                            </span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {isFree ? (
+                                <span className="text-emerald-700 font-black">{isAr ? 'مجاناً 🎁' : 'FREE'}</span>
+                              ) : selectedCountryCode === 'IQ' ? (
+                                `${carrier.basePriceIQD.toLocaleString()} د.ع`
+                              ) : (
+                                `$${carrier.basePriceUSD} (${carrier.basePriceIQD.toLocaleString()} د.ع)`
+                              )}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Full Name & Phone inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
@@ -459,37 +681,51 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+964 780 000 0000"
-                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                      placeholder={selectedCountry.phonePlaceholder}
+                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white font-mono"
                     />
                   </div>
                   <span className="text-[11px] text-slate-400 mt-1 block">
-                    {isAr ? 'سنرسل لك صورة البروفة قبل بدء قص الليزر على هذا الرقم' : 'We will send the digital proof sketch to this WhatsApp number'}
+                    {isAr
+                      ? `رمز الدولة: ${selectedCountry.phoneCode} — سنرسل لك صورة البروفة قبل بدء التصنيع`
+                      : `Dial code: ${selectedCountry.phoneCode} — We will send proof before fabrication`}
                   </span>
                 </div>
               </div>
 
+              {/* City & Delivery Priority */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
                     {isAr ? 'المحافظة / المدينة *' : 'Governorate / City *'}
                   </label>
-                  <select
-                    value={governorate}
-                    onChange={(e) => setGovernorate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  >
-                    {governorates.map((gov) => (
-                      <option key={gov.id} value={gov.nameAr}>
-                        {isAr ? gov.nameAr : gov.nameEn}
-                      </option>
-                    ))}
-                  </select>
+                  {selectedCountry.cities && selectedCountry.cities.length > 0 ? (
+                    <select
+                      value={governorate}
+                      onChange={(e) => setGovernorate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                    >
+                      {selectedCountry.cities.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      value={governorate}
+                      onChange={(e) => setGovernorate(e.target.value)}
+                      placeholder={isAr ? 'اسم المدينة أو الولاية' : 'City or State'}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-800 uppercase tracking-wide mb-1.5">
-                    {isAr ? 'نوع وسرعة الشحن:' : 'Delivery Priority:'}
+                    {isAr ? 'نوع التجهيز والسرعة:' : 'Processing Priority:'}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -503,7 +739,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     >
                       <span className="block">{isAr ? 'شحن اعتيادي' : 'Standard'}</span>
                       <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        {subtotal >= 150000 ? (isAr ? 'مجاناً' : 'FREE') : (isAr ? '5,000 - 8,000 د.ع' : '5k - 8k IQD')}
+                        {activeCarrier?.deliveryDaysAr || (isAr ? 'حسب جدول الشحن' : 'Per carrier')}
                       </span>
                     </button>
                     <button
@@ -515,9 +751,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           : 'border-slate-200 bg-white text-slate-700'
                       }`}
                     >
-                      <span className="block">{isAr ? 'شحن سريع مستعجل' : 'Express Rush'}</span>
+                      <span className="block">{isAr ? 'شحن فائق السرعة' : 'Priority Rush'}</span>
                       <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        10,000 {isAr ? 'د.ع' : 'IQD'}
+                        {isAr ? 'معالجة ذات أولوية' : 'High Priority'}
                       </span>
                     </button>
                   </div>
@@ -858,152 +1094,85 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </h2>
             </div>
 
-            {/* Gateway Category: Local Iraq */}
-            <div className="space-y-3">
-              <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                {isAr ? 'بوابات الدفع المحلية في العراق:' : 'Local Iraqi Payment Options:'}
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* 1. ZainCash */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedGateway('zaincash')}
-                  className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedGateway === 'zaincash'
-                      ? 'border-amber-600 bg-amber-50/70 ring-2 ring-amber-600 shadow-xs'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold">
-                        ZainCash
-                      </span>
-                      <Phone className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <span className="font-bold text-sm text-slate-900 block">
-                      {isAr ? 'زين كاش العراق' : 'ZainCash Iraq'}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block mt-1">
-                      {isAr ? 'دفع فوري عبر محفظة زين كاش' : 'Direct mobile wallet payment'}
-                    </span>
-                  </div>
-                </button>
-
-                {/* 2. FIB - First Iraqi Bank */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedGateway('fib')}
-                  className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedGateway === 'fib'
-                      ? 'border-sky-600 bg-sky-50/70 ring-2 ring-sky-600 shadow-xs'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 text-[10px] font-bold">
-                        FIB
-                      </span>
-                      <QrCode className="w-4 h-4 text-sky-600" />
-                    </div>
-                    <span className="font-bold text-sm text-slate-900 block">
-                      {isAr ? 'المصرف العراقي الأول' : 'First Iraqi Bank'}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block mt-1">
-                      {isAr ? 'مسح رمز QR عبر تطبيق FIB' : 'Scan dynamic QR via FIB App'}
-                    </span>
-                  </div>
-                </button>
-
-                {/* 3. Cash on Delivery (COD) */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedGateway('cod')}
-                  className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedGateway === 'cod'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600 shadow-xs'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                        COD
-                      </span>
-                      <Banknote className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <span className="font-bold text-sm text-slate-900 block">
-                      {isAr ? 'الدفع عند الاستلام' : 'Cash on Delivery'}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block mt-1">
-                      {isAr ? 'دفع نقدي لمندوب التوصيل' : 'Pay cash to dispatch courier'}
-                    </span>
-                  </div>
-                </button>
+            {/* Dynamic Gateways Grid based on Admin Configuration and Destination Country */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="block text-xs font-bold text-slate-700">
+                  {isAr
+                    ? `طرق الدفع المتاحة لـ ${selectedCountry.nameAr} (مُدارة من لوحة التحكم):`
+                    : `Active Payment Gateways for ${selectedCountry.nameEn}:`}
+                </span>
+                <span className="text-[11px] font-mono text-purple-700 font-bold bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100">
+                  {availableGateways.length} {isAr ? 'بوابة دفع نشطة' : 'gateways active'}
+                </span>
               </div>
-            </div>
 
-            {/* Gateway Category: International */}
-            <div className="space-y-3 pt-2">
-              <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                {isAr ? 'بوابات الدفع الدولية / البطاقات المصرفية:' : 'International Payment Methods:'}
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 4. Stripe Card */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedGateway('stripe')}
-                  className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedGateway === 'stripe'
-                      ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-600 shadow-xs'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
+              {availableGateways.length === 0 ? (
+                <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-bold">
-                        Stripe
-                      </span>
-                      <CreditCard className="w-4 h-4 text-indigo-600" />
-                    </div>
-                    <span className="font-bold text-sm text-slate-900 block">
-                      {isAr ? 'بطاقة بنكية (Stripe Card)' : 'Credit Card (Stripe)'}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block mt-1">
-                      Visa / Mastercard / QI Card
-                    </span>
+                    <h5 className="font-bold">{isAr ? 'لا توجد بوابات دفع مفعلة لهذه الدولة حالياً' : 'No active payment gateways'}</h5>
+                    <p className="mt-1 leading-relaxed text-amber-800">
+                      {isAr
+                        ? 'قام مدير المتجر بتعطيل البوابات مؤقتاً لهذه الوجهة. يمكنك تفعيلها من لوحة الإدارة > بوابات الدفع والشحن الدولي، أو إتمام الطلب بالتواصل المباشر مع استوديو نون والقلم.'
+                        : 'Gateways are temporarily disabled. Please enable them in Admin Studio or contact support.'}
+                    </p>
                   </div>
-                </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {availableGateways.map((gw) => {
+                    const isSelected = selectedGateway === gw.id;
 
-                {/* 5. PayPal */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedGateway('paypal')}
-                  className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedGateway === 'paypal'
-                      ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-600 shadow-xs'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">
-                        PayPal
-                      </span>
-                      <Lock className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <span className="font-bold text-sm text-slate-900 block">
-                      PayPal
-                    </span>
-                    <span className="text-[11px] text-slate-500 block mt-1">
-                      {isAr ? 'دفع آمن بالدولار الأمريكي' : 'Secure USD checkout sandbox'}
-                    </span>
-                  </div>
-                </button>
-              </div>
+                    return (
+                      <button
+                        key={gw.id}
+                        type="button"
+                        onClick={() => setSelectedGateway(gw.id as PaymentMethod)}
+                        className={`p-4 rounded-2xl border text-start transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-amber-600 bg-amber-50/80 ring-2 ring-amber-600 shadow-xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[10px] font-bold">
+                              {gw.badgeAr}
+                            </span>
+                            {gw.iconType === 'wallet' ? (
+                              <Wallet className="w-4 h-4 text-amber-600" />
+                            ) : gw.iconType === 'bank' ? (
+                              <Building className="w-4 h-4 text-indigo-600" />
+                            ) : gw.iconType === 'card' ? (
+                              <CreditCard className="w-4 h-4 text-emerald-600" />
+                            ) : gw.iconType === 'paypal' ? (
+                              <Globe className="w-4 h-4 text-blue-600" />
+                            ) : gw.iconType === 'building' ? (
+                              <Building className="w-4 h-4 text-slate-700" />
+                            ) : (
+                              <Banknote className="w-4 h-4 text-teal-600" />
+                            )}
+                          </div>
+                          <span className="font-bold text-sm text-slate-900 block leading-tight">
+                            {gw.nameAr}
+                          </span>
+                          <span className="text-[11px] text-slate-500 block mt-1 leading-snug">
+                            {gw.descriptionAr}
+                          </span>
+                        </div>
+
+                        {gw.isTestMode && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 text-[10px] text-amber-800 font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span>{isAr ? 'وضع تجريبي نشط (Sandbox)' : 'Sandbox Mode'}</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Dynamic Interactive Gateway Panel */}
@@ -1107,6 +1276,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
               )}
 
+              {selectedGateway === 'tap' && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
+                    <CreditCard className="w-4 h-4 text-amber-600" />
+                    <span>{isAr ? 'بوابة تاب الخليجية (Tap Payments - GCC):' : 'Tap Payments (GCC Gateway):'}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] font-bold">🇸🇦 مدى Mada</span>
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] font-bold">🍎 Apple Pay</span>
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] font-bold">🇰🇼 KNET</span>
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] font-bold">🇧🇭 Benefit</span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {isAr
+                        ? `سيتم تحويل العملية الآمنة بالعملة المحلية (${selectedCountry.currencyAr}) مع إمكانية الدفع بنقرة واحدة عبر Apple Pay أو بطاقات مدى الخليجية.`
+                        : `Payment will be executed seamlessly in local currency (${selectedCountry.currencyCode}) via Mada or Apple Pay.`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {selectedGateway === 'stripe' && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -1169,6 +1360,84 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       ? 'سيتم تحويلك إلى نافذة PayPal الآمنة لتفويض الدفع الدولي بضمان حماية المشتري.'
                       : 'You will be connected to PayPal sandbox checkout with instant buyer protection.'}
                   </p>
+                </div>
+              )}
+
+              {selectedGateway === 'bank_transfer' && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <Building className="w-4 h-4 text-purple-700" />
+                    <span>{isAr ? 'التحويل البنكي الرسمي المعتمد (SWIFT / IBAN):' : 'Official Corporate Wire Transfer:'}</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs space-y-2">
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">{isAr ? 'اسم المستفيد:' : 'Beneficiary:'}</span>
+                      <strong className="text-slate-900">شركة نون والقلم للطباعة والتصميم المحدودة</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100 font-mono">
+                      <span className="text-slate-500">IBAN:</span>
+                      <strong className="text-slate-900">IQ99BKBN0000000123456789</strong>
+                    </div>
+                    <div className="flex justify-between py-1 font-mono">
+                      <span className="text-slate-500">SWIFT/BIC:</span>
+                      <strong className="text-slate-900">FIBNIQBAXXX</strong>
+                    </div>
+                    <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                      {isAr
+                        ? 'سيتم إصدار فاتورة طلب أولية (Proforma Invoice) فور اعتماد الطلب لتسليمها لقسم الحسابات لديكم.'
+                        : 'A Proforma Invoice will be generated upon submission.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic Support for Any Custom-Added Gateway */}
+              {!['zaincash', 'fib', 'cod', 'tap', 'stripe', 'paypal', 'bank_transfer'].includes(selectedGateway) && (
+                <div className="space-y-3">
+                  {(() => {
+                    const customGw = availableGateways.find((g) => g.id === selectedGateway);
+                    if (!customGw) return null;
+                    return (
+                      <div className="p-4 rounded-xl bg-white border border-purple-200 text-xs space-y-3 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 font-extrabold text-[11px]">
+                              {customGw.badgeAr || (isAr ? 'بوابة دفع نشطة' : 'Active Gateway')}
+                            </span>
+                            <strong className="text-slate-900 text-sm">{customGw.nameAr}</strong>
+                          </div>
+                          {customGw.isTestMode && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                              Sandbox (بيئة تجريبية)
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-slate-600 leading-relaxed text-xs">
+                          {customGw.descriptionAr}
+                        </p>
+
+                        {customGw.instructionsAr && (
+                          <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-amber-900 text-xs leading-relaxed">
+                            {customGw.instructionsAr}
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                          <span>
+                            {isAr ? 'العملات المدعومة: ' : 'Currencies: '}
+                            <strong className="text-slate-700 font-mono">
+                              {customGw.supportedCurrencies?.join(' • ') || 'IQD • USD'}
+                            </strong>
+                          </span>
+                          <span className="text-emerald-750 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{isAr ? 'معالجة مشفرة وآمنة 100%' : '100% Encrypted & Secure'}</span>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

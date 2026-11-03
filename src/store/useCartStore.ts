@@ -61,11 +61,21 @@ export interface ShippingInfo {
   address: string;
   notes?: string;
   deliveryType: 'standard' | 'express';
+  carrierId?: string;
+  carrierNameAr?: string;
+  carrierNameEn?: string;
   shippingCost: number;
   partnerCode?: string;
 }
 
-export type PaymentMethod = 'zaincash' | 'fib' | 'cod' | 'stripe' | 'paypal';
+export type PaymentMethod =
+  | 'zaincash'
+  | 'fib'
+  | 'cod'
+  | 'stripe'
+  | 'paypal'
+  | 'tap'
+  | 'bank_transfer';
 
 export type ManufacturingStatus =
   | 'under_review'        // قيد المراجعة

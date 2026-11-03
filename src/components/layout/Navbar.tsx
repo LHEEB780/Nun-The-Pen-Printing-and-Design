@@ -9,6 +9,7 @@ import {
   LogOut,
   LayoutDashboard,
   ShieldAlert,
+  ShieldCheck,
   Bell,
   MessageCircle,
   CheckCircle2,
@@ -22,7 +23,7 @@ import {
   Award,
 } from 'lucide-react';
 import { useCartStore } from '../../store/useCartStore';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useAuthStore, UserRole } from '../../store/useAuthStore';
 import { useOffersStore } from '../../store/useOffersStore';
 import { useCurrencyStore } from '../../store/useCurrencyStore';
 import { LanguageToggle } from './LanguageToggle';
@@ -78,7 +79,36 @@ export const Navbar: React.FC<NavbarProps> = ({
     wishlist,
     setIsWishlistOpen,
     loyaltyPoints,
+    hasPermission,
+    setUserRole,
   } = useAuthStore();
+
+  const userRole: UserRole = user?.role || 'customer';
+  // Dynamic permissions evaluation based on role and stored permissions array
+  const canAccessAdmin = isAuthenticated && (userRole === 'admin' || userRole === 'manager' || hasPermission('access_admin'));
+  const canAccessPartners = isAuthenticated && (userRole === 'admin' || userRole === 'manager' || hasPermission('manage_partners'));
+
+  const roleBadgeInfo = {
+    admin: {
+      labelAr: 'المدير العام (Admin)',
+      labelEn: 'Super Admin',
+      bg: 'bg-amber-100 text-amber-900 border-amber-300',
+      badgeDot: 'bg-amber-500',
+    },
+    manager: {
+      labelAr: 'مدير العمليات (Manager)',
+      labelEn: 'Operations Manager',
+      bg: 'bg-blue-100 text-blue-900 border-blue-300',
+      badgeDot: 'bg-blue-500',
+    },
+    customer: {
+      labelAr: 'عميل المتجر (Customer)',
+      labelEn: 'Verified Customer',
+      bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      badgeDot: 'bg-emerald-500',
+    },
+  }[userRole];
+
   const { getFeaturedOffer, getActiveOffers } = useOffersStore();
   const { formatPrice } = useCurrencyStore();
   const featuredOffer = getFeaturedOffer();
@@ -141,7 +171,16 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const navLinks = [
+  interface NavLinkItem {
+    href: string;
+    label: string;
+    isShop: boolean;
+    isOffers: boolean;
+    requiredPermission?: string;
+    requiredRoles?: UserRole[];
+  }
+
+  const navLinks: NavLinkItem[] = [
     { href: '#home', label: t('nav.home'), isShop: false, isOffers: false },
     { href: '#specialties', label: isAr ? 'استوديوهات الإنتاج' : 'Production Studios', isShop: false, isOffers: false },
     { href: '#offers', label: isAr ? 'عروض الموسم' : 'Seasonal Offers', isShop: false, isOffers: true },
@@ -152,6 +191,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     { href: '#testimonials', label: t('nav.testimonials'), isShop: false, isOffers: false },
     { href: '#contact', label: t('nav.contact'), isShop: false, isOffers: false },
   ];
+
+  // Dynamic filter for navbar links based on user permissions and role
+  const visibleNavLinks = navLinks.filter((link) => {
+    if (link.requiredPermission && !hasPermission(link.requiredPermission)) return false;
+    if (link.requiredRoles && (!isAuthenticated || !link.requiredRoles.includes(userRole))) return false;
+    return true;
+  });
 
   return (
     <header className="fixed top-0 inset-x-0 z-40 transition-colors duration-200">
@@ -276,7 +322,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop Nav Links (Responsive gap and typography to guarantee menu items never get pushed) */}
           <nav className="hidden lg:flex items-center gap-2.5 xl:gap-4 2xl:gap-5.5">
-            {navLinks.map((link) => {
+            {visibleNavLinks.map((link) => {
               const isOffersActive = link.isOffers && currentView === 'offers';
               const isShopActive = link.isShop && currentView === 'shop';
               const isHomeActive = !link.isShop && !link.isOffers && currentView === 'home' && link.href === '#home';
@@ -309,6 +355,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Tools: Smaller, refined buttons ordered logically */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Dynamic Admin Studio button: displayed only if role is admin/manager or has access_admin */}
+            {canAccessAdmin && (
+              <button
+                onClick={() => {
+                  onNavigate('admin');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                type="button"
+                className={`hidden xl:inline-flex items-center gap-1.5 h-[30px] sm:h-[32px] px-2.5 sm:px-3 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-all cursor-pointer shadow-2xs hover:shadow-xs shrink-0 ${
+                  currentView === 'admin'
+                    ? 'bg-amber-900 text-amber-100 border-amber-800 ring-1 ring-amber-600'
+                    : 'bg-amber-50/90 hover:bg-amber-100/90 text-amber-950 border-amber-300'
+                }`}
+                title={isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard'}
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span>{isAr ? 'لوحة التحكم' : 'Admin'}</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-200/90 text-amber-950 text-[9px] font-black">
+                  {userRole === 'admin' ? (isAr ? 'مدير' : 'Admin') : (isAr ? 'مشرف' : 'Manager')}
+                </span>
+              </button>
+            )}
+
             {/* 1. Request Custom Design CTA (Sleek, compact luxury button) */}
             <button
               onClick={() => {
@@ -549,12 +618,23 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 {/* Dropdown Menu */}
                 {userMenuOpen && (
-                  <div className="absolute end-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-scale">
-                    <div className="px-4 py-2 border-b border-slate-100">
+                  <div className="absolute end-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-scale">
+                    {/* User Identity & Active Role Badge */}
+                    <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
                       <p className="text-xs font-bold text-slate-900 truncate">{user.fullName}</p>
                       <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${roleBadgeInfo.bg}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${roleBadgeInfo.badgeDot}`} />
+                          <span>{isAr ? roleBadgeInfo.labelAr : roleBadgeInfo.labelEn}</span>
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {user.permissions?.length || 0} {isAr ? 'صلاحيات' : 'perms'}
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Standard User Navigation Links */}
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
@@ -610,29 +690,79 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        onNavigate('partners');
-                      }}
-                      type="button"
-                      className="w-full text-start px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
-                    >
-                      <Briefcase className="w-4 h-4 text-amber-700" />
-                      <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
-                    </button>
+                    {/* Sales Partners Portal - Conditionally rendered based on permission */}
+                    {canAccessPartners && (
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onNavigate('partners');
+                        }}
+                        type="button"
+                        className="w-full text-start px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
+                      >
+                        <Briefcase className="w-4 h-4 text-amber-700" />
+                        <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        onNavigate('admin');
-                      }}
-                      type="button"
-                      className="w-full text-start px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer border-t border-slate-100"
-                    >
-                      <ShieldAlert className="w-4 h-4 text-amber-600" />
-                      <span>{isAr ? 'لوحة الإدارة (RBAC Studio)' : 'Admin Dashboard'}</span>
-                    </button>
+                    {/* Admin Dashboard - DYNAMICALLY RENDERED ONLY for admin/manager or access_admin */}
+                    {canAccessAdmin && (
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onNavigate('admin');
+                        }}
+                        type="button"
+                        className="w-full text-start px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-50 flex items-center justify-between cursor-pointer border-t border-slate-100 group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="w-4 h-4 text-amber-700 group-hover:scale-110 transition-transform" />
+                          <span>{isAr ? 'لوحة الإدارة (RBAC Studio)' : 'Admin Dashboard'}</span>
+                        </div>
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-950 text-[9px] font-black">
+                          {userRole}
+                        </span>
+                      </button>
+                    )}
+
+                    {/* Dynamic Role Switcher (Live Testing Console) */}
+                    <div className="p-2.5 border-t border-slate-100 bg-amber-50/40">
+                      <div className="flex items-center justify-between mb-1.5 px-0.5">
+                        <span className="text-[10px] font-bold text-amber-950">
+                          {isAr ? 'تبديل الرتبة للتجربة:' : 'Test RBAC Role:'}
+                        </span>
+                        <span className="text-[9px] text-amber-800 font-semibold">
+                          {userRole}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['admin', 'manager', 'customer'] as UserRole[]).map((r) => {
+                          const isActive = userRole === r;
+                          return (
+                            <button
+                              key={r}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUserRole(r);
+                              }}
+                              className={`py-1 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer ${
+                                isActive
+                                  ? 'bg-amber-900 text-amber-100 shadow-xs ring-1 ring-amber-700 font-black'
+                                  : 'bg-white hover:bg-amber-100 text-slate-700 border border-slate-200'
+                              }`}
+                              title={r}
+                            >
+                              {r === 'admin'
+                                ? (isAr ? 'مدير' : 'Admin')
+                                : r === 'manager'
+                                ? (isAr ? 'مشرف' : 'Manager')
+                                : (isAr ? 'عميل' : 'Customer')}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <button
                       onClick={() => {
@@ -754,7 +884,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
                     {isAr ? 'صفحات المتجر' : 'Navigation'}
                   </p>
-                  {navLinks.map((link) => (
+                  {visibleNavLinks.map((link) => (
                     <button
                       key={link.href}
                       onClick={() => handleLinkClick(link.href)}
@@ -783,8 +913,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {isAr ? 'الحساب والخدمات' : 'Account & Portals'}
                     </p>
 
-                    {isAuthenticated ? (
+                    {isAuthenticated && user ? (
                       <>
+                        {/* Mobile User Identity & Role Badge */}
+                        <div className="p-2.5 mb-1 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-900 truncate">{user.fullName}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${roleBadgeInfo.bg} shrink-0`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${roleBadgeInfo.badgeDot}`} />
+                            <span>{isAr ? roleBadgeInfo.labelAr : roleBadgeInfo.labelEn}</span>
+                          </span>
+                        </div>
+
                         <button
                           onClick={() => {
                             setMobileMenuOpen(false);
@@ -838,29 +980,75 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </span>
                         </button>
 
-                        <button
-                          onClick={() => {
-                            setMobileMenuOpen(false);
-                            onNavigate('partners');
-                          }}
-                          type="button"
-                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-amber-950 bg-amber-50/70 hover:bg-amber-100 transition-colors flex items-center gap-2"
-                        >
-                          <Briefcase className="w-4 h-4 text-amber-700" />
-                          <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
-                        </button>
+                        {/* Sales Partners Portal - Conditionally rendered */}
+                        {canAccessPartners && (
+                          <button
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              onNavigate('partners');
+                            }}
+                            type="button"
+                            className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-amber-950 bg-amber-50/70 hover:bg-amber-100 transition-colors flex items-center gap-2"
+                          >
+                            <Briefcase className="w-4 h-4 text-amber-700" />
+                            <span>{isAr ? 'بوابة الشركاء وممثلي المبيعات' : 'Sales Partners Portal'}</span>
+                          </button>
+                        )}
 
-                        <button
-                          onClick={() => {
-                            setMobileMenuOpen(false);
-                            onNavigate('admin');
-                          }}
-                          type="button"
-                          className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-amber-900 hover:bg-amber-50 transition-colors flex items-center gap-2"
-                        >
-                          <ShieldAlert className="w-4 h-4 text-amber-600" />
-                          <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard'}</span>
-                        </button>
+                        {/* Admin Dashboard - DYNAMICALLY RENDERED ONLY for admin/manager or access_admin */}
+                        {canAccessAdmin && (
+                          <button
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              onNavigate('admin');
+                            }}
+                            type="button"
+                            className="w-full text-start px-3.5 py-2 rounded-lg text-xs font-bold text-amber-900 hover:bg-amber-50 transition-colors flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <ShieldAlert className="w-4 h-4 text-amber-600" />
+                              <span>{isAr ? 'لوحة تحكم الإدارة (RBAC)' : 'Admin Dashboard'}</span>
+                            </div>
+                            <span className="px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-950 text-[9px] font-black">
+                              {userRole}
+                            </span>
+                          </button>
+                        )}
+
+                        {/* Mobile Live Role Switcher (For testing RBAC transitions) */}
+                        <div className="p-3 my-1 rounded-xl bg-amber-50/60 border border-amber-200/70">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-amber-950">
+                              {isAr ? 'تبديل الرتبة للتجربة:' : 'Test RBAC Role:'}
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-500">
+                              {user.permissions?.length || 0} {isAr ? 'صلاحيات' : 'perms'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {(['admin', 'manager', 'customer'] as UserRole[]).map((r) => {
+                              const isActive = userRole === r;
+                              return (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => setUserRole(r)}
+                                  className={`py-1.5 text-[10px] font-bold rounded-lg transition-all text-center cursor-pointer ${
+                                    isActive
+                                      ? 'bg-amber-900 text-amber-100 shadow-xs ring-1 ring-amber-700 font-black'
+                                      : 'bg-white hover:bg-amber-100 text-slate-700 border border-slate-200'
+                                  }`}
+                                >
+                                  {r === 'admin'
+                                    ? (isAr ? 'مدير عام' : 'Admin')
+                                    : r === 'manager'
+                                    ? (isAr ? 'مشرف' : 'Manager')
+                                    : (isAr ? 'عميل' : 'Customer')}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </>
                     ) : (
                       <button

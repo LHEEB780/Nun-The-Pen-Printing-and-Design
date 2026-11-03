@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAdminStore, AdminRole } from '../../store/useAdminStore';
+import { useAdminStore, AdminRole, AdminDashboardTab, DEFAULT_ROLE_PERMISSIONS } from '../../store/useAdminStore';
+
+export type { AdminDashboardTab };
 import { AnalyticsTab } from './AnalyticsTab';
 import { FormBuilderTab } from './FormBuilderTab';
 import { ProductManagementTab } from './ProductManagementTab';
@@ -15,6 +17,7 @@ import { AdminCommissionsWalletTab } from './AdminCommissionsWalletTab';
 import { AdminQRCodesTab } from './AdminQRCodesTab';
 import { AdminCampaignROASTab } from './AdminCampaignROASTab';
 import { AdminAutonomousAgentsTab } from './AdminAutonomousAgentsTab';
+import { PaymentShippingManagementTab } from './PaymentShippingManagementTab';
 import {
   BarChart3,
   Sliders,
@@ -22,6 +25,7 @@ import {
   ClipboardList,
   Users,
   Shield,
+  CreditCard,
   ArrowLeft,
   ArrowRight,
   Store,
@@ -43,27 +47,104 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export type AdminDashboardTab =
-  | 'analytics'
-  | 'autonomous_agents'
-  | 'orchestrator'
-  | 'campaign_roas'
-  | 'campaigns'
-  | 'offers'
-  | 'form_builder'
-  | 'products'
-  | 'orders'
-  | 'users'
-  | 'content'
-  | 'sales_partners'
-  | 'commissions_wallet'
-  | 'qr_codes';
-
 interface AdminDashboardProps {
   onBackToStore: () => void;
   initialTab?: AdminDashboardTab;
   onOpenLandingPreview?: (productId?: string) => void;
 }
+
+export const ALL_DASHBOARD_TABS = [
+  {
+    id: 'analytics' as const,
+    labelAr: 'لوحة التحليلات والإيرادات',
+    labelEn: 'Analytics & Revenue',
+    icon: BarChart3,
+  },
+  {
+    id: 'autonomous_agents' as const,
+    labelAr: '🤖 فريق الوكلاء الموظفين (Multi-Agent)',
+    labelEn: '🤖 Autonomous Multi-Agent Staff',
+    icon: BrainCircuit,
+  },
+  {
+    id: 'sales_partners' as const,
+    labelAr: 'شركاء نون والقلم (فريق المبيعات)',
+    labelEn: 'Sales Partners & BD',
+    icon: Briefcase,
+  },
+  {
+    id: 'qr_codes' as const,
+    labelAr: 'باركودات QR المطبوعة للحملات',
+    labelEn: 'Printable QR Campaigns',
+    icon: QrCode,
+  },
+  {
+    id: 'commissions_wallet' as const,
+    labelAr: 'محفظة العمولات والتحويلات',
+    labelEn: 'Commissions & Payouts',
+    icon: Wallet,
+  },
+  {
+    id: 'orchestrator' as const,
+    labelAr: '⚡ موجّه الحملات بالذكاء الاصطناعي (AI Orchestrator)',
+    labelEn: '⚡ AI Campaign Orchestrator',
+    icon: Bot,
+  },
+  {
+    id: 'campaign_roas' as const,
+    labelAr: '📊 العائد الإعلاني ومبيعات الحملات (ROAS)',
+    labelEn: '📊 Campaign ROAS & Sales Attribution',
+    icon: TrendingUp,
+  },
+  {
+    id: 'campaigns' as const,
+    labelAr: 'صفحات هبوط تيك توك والحملات',
+    labelEn: 'TikTok Landing Pages & Campaigns',
+    icon: Flame,
+  },
+  {
+    id: 'offers' as const,
+    labelAr: 'عروض الموسم والتخفيضات',
+    labelEn: 'Seasonal Deals & Offers',
+    icon: Tag,
+  },
+  {
+    id: 'content' as const,
+    labelAr: 'إدارة المحتوى والمقالات (CMS)',
+    labelEn: 'CMS Content & Articles',
+    icon: FileText,
+  },
+  {
+    id: 'form_builder' as const,
+    labelAr: 'منشئ النماذج الديناميكية',
+    labelEn: 'Dynamic Form Builder',
+    icon: Sliders,
+  },
+  {
+    id: 'products' as const,
+    labelAr: 'إدارة المنتجات والتسعير المتدرج',
+    labelEn: 'Products & Tiered Pricing',
+    icon: Package,
+  },
+  {
+    id: 'orders' as const,
+    labelAr: 'خط إنتاج الورشة والطلبات',
+    labelEn: 'Workshop Pipeline & Orders',
+    icon: ClipboardList,
+  },
+  {
+    id: 'payment_shipping' as const,
+    labelAr: 'بوابات الدفع والشحن الدولي',
+    labelEn: 'Payments & Global Shipping',
+    icon: CreditCard,
+  },
+  {
+    id: 'users' as const,
+    labelAr: 'إدارة الفريق والأدوار (RBAC)',
+    labelEn: 'Staff & RBAC Management',
+    icon: Users,
+  },
+];
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onBackToStore,
@@ -72,18 +153,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
-  const { currentRole, setCurrentRole } = useAdminStore();
+  const { currentRole, setCurrentRole, rolePermissions, getAllowedTabsForRole } = useAdminStore();
 
-  const [activeTab, setActiveTab] = useState<AdminDashboardTab>(initialTab);
-
-  // Role metadata and accessible tabs definition
+  // Role metadata
   const roleConfig: Record<
     AdminRole,
     {
       titleAr: string;
       titleEn: string;
       badgeClass: string;
-      allowedTabs: AdminDashboardTab[];
       descriptionAr: string;
       descriptionEn: string;
     }
@@ -92,30 +170,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'المدير العام (Super Admin)',
       titleEn: 'Super Admin',
       badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      allowedTabs: [
-        'analytics',
-        'autonomous_agents',
-        'orchestrator',
-        'campaign_roas',
-        'campaigns',
-        'offers',
-        'form_builder',
-        'products',
-        'orders',
-        'users',
-        'content',
-        'sales_partners',
-        'commissions_wallet',
-        'qr_codes',
-      ],
-      descriptionAr: 'صلاحيات مطلقة: قيادة فريق الوكلاء الموظفين الآليين، تحليلات الإيرادات، توجيه الحملات بالذكاء الاصطناعي، العائد الإعلاني ROAS، صفحات هبوط تيك توك، إدارة عروض الموسم، بناء النماذج، والشركاء.',
-      descriptionEn: 'Full system privileges: Autonomous Multi-Agent Staff command center, Analytics, AI Campaign Orchestrator, ROAS Attribution, TikTok Funnels, Seasonal Deals, Dynamic Forms, Staff RBAC, and Sales Partners.',
+      descriptionAr: 'صلاحيات مطلقة: قيادة فريق الوكلاء الموظفين الآليين، تحليلات الإيرادات، توجيه الحملات بالذكاء الاصطناعي، العائد الإعلاني ROAS، صفحات هبوط تيك توك، إدارة عروض الموسم، بناء النماذج، والشركاء، وبوابات الدفع والشحن الدولي.',
+      descriptionEn: 'Full system privileges: Autonomous Multi-Agent Staff, Analytics, AI Campaign Orchestrator, ROAS Attribution, TikTok Funnels, Seasonal Deals, Dynamic Forms, Staff RBAC, Sales Partners, and Payment & Shipping gateways.',
     },
     sales_manager: {
       titleAr: 'مدير المبيعات (Sales Manager)',
       titleEn: 'Sales Manager',
       badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
-      allowedTabs: ['analytics', 'autonomous_agents', 'orchestrator', 'campaign_roas', 'campaigns', 'offers', 'orders', 'sales_partners', 'commissions_wallet', 'qr_codes'],
       descriptionAr: 'صلاحيات المبيعات: تحليلات الإيرادات، الإشراف على وكلاء المهام، العائد الإعلاني ROAS، صفحات هبوط تيك توك، إدارة العروض، وفواتير الطلبات.',
       descriptionEn: 'Sales permissions: Revenue charts, Autonomous Agents oversight, AI Campaign Orchestrator, ROAS Attribution, TikTok Funnels, orders tracking, and sales partners.',
     },
@@ -123,7 +184,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'مدير المخزن والخامات (Inventory Manager)',
       titleEn: 'Inventory Manager',
       badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
-      allowedTabs: ['products', 'orders'],
       descriptionAr: 'صلاحيات المخزون: إضافة وتعديل المنتجات، ضبط الخصومات المتدرجة، ومتابعة خامات الأكريليك والكرتون.',
       descriptionEn: 'Inventory permissions: Manage catalog items, bulk discounts, and track raw materials.',
     },
@@ -131,7 +191,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       titleAr: 'مصمم البروفات والليزر (Designer)',
       titleEn: 'Workshop Designer',
       badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      allowedTabs: ['orders', 'form_builder', 'content'],
       descriptionAr: 'صلاحيات التصميم: فحص شعارات الزبائن، إدارة مقالات وتصاميم المعرض، وضبط حقول النماذج.',
       descriptionEn: 'Design permissions: Inspect logos, CMS articles, and review dynamic form specs.',
     },
@@ -139,10 +198,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const currentConfig = roleConfig[currentRole];
 
-  // Auto switch tab and enforce role permissions
+  // Dynamically compute allowed tabs for active role
+  const allowedTabs: AdminDashboardTab[] =
+    (getAllowedTabsForRole ? getAllowedTabsForRole(currentRole) : null) ||
+    rolePermissions?.[currentRole] ||
+    DEFAULT_ROLE_PERMISSIONS[currentRole] ||
+    [];
+
+  // Filter tabs strictly: ONLY show permitted tabs in the menu bar!
+  const visibleTabs = ALL_DASHBOARD_TABS.filter((tab) => allowedTabs.includes(tab.id));
+
+  const [activeTab, setActiveTab] = useState<AdminDashboardTab>(() => {
+    return allowedTabs.includes(initialTab) ? initialTab : (allowedTabs[0] || 'analytics');
+  });
+
+  // Auto-switch to first allowed tab if activeTab is not permitted or role changes
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [currentRole, allowedTabs, activeTab]);
+
   const handleSelectTab = (tab: AdminDashboardTab) => {
-    if (!currentConfig.allowedTabs.includes(tab)) {
-      // Block restricted tabs — never auto-elevate the active role
+    if (!allowedTabs.includes(tab)) {
       toast.error(
         isAr
           ? `التبويب "${tab}" غير مصرّح لدور ${currentConfig.titleAr}. يتطلب صلاحية المدير العام.`
@@ -155,9 +233,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleRoleChange = (role: AdminRole) => {
     setCurrentRole(role);
-    const newConfig = roleConfig[role];
-    if (!newConfig.allowedTabs.includes(activeTab)) {
-      setActiveTab(newConfig.allowedTabs[0]);
+    const targetAllowed =
+      (getAllowedTabsForRole ? getAllowedTabsForRole(role) : null) ||
+      rolePermissions?.[role] ||
+      DEFAULT_ROLE_PERMISSIONS[role] ||
+      [];
+    if (!targetAllowed.includes(activeTab)) {
+      setActiveTab(targetAllowed[0] || 'analytics');
     }
   };
 
@@ -235,101 +317,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="text-xs text-purple-200 shrink-0 font-medium">
             <span>{isAr ? 'التبويبات المتاحة لك:' : 'Accessible tabs:'} </span>
             <span className="font-mono font-bold text-white">
-              {currentConfig.allowedTabs.length} / 12
+              {visibleTabs.length} / {ALL_DASHBOARD_TABS.length}
             </span>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs - ONLY show permitted tabs for the current role/user */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {[
-            {
-              id: 'analytics' as const,
-              labelAr: 'لوحة التحليلات والإيرادات',
-              labelEn: 'Analytics & Revenue',
-              icon: BarChart3,
-            },
-            {
-              id: 'autonomous_agents' as const,
-              labelAr: '🤖 فريق الوكلاء الموظفين (Multi-Agent)',
-              labelEn: '🤖 Autonomous Multi-Agent Staff',
-              icon: BrainCircuit,
-            },
-            {
-              id: 'sales_partners' as const,
-              labelAr: 'شركاء نون والقلم (فريق المبيعات)',
-              labelEn: 'Sales Partners & BD',
-              icon: Briefcase,
-            },
-            {
-              id: 'qr_codes' as const,
-              labelAr: 'باركودات QR المطبوعة للحملات',
-              labelEn: 'Printable QR Campaigns',
-              icon: QrCode,
-            },
-            {
-              id: 'commissions_wallet' as const,
-              labelAr: 'محفظة العمولات والتحويلات',
-              labelEn: 'Commissions & Payouts',
-              icon: Wallet,
-            },
-            {
-              id: 'orchestrator' as const,
-              labelAr: '⚡ موجّه الحملات بالذكاء الاصطناعي (AI Orchestrator)',
-              labelEn: '⚡ AI Campaign Orchestrator',
-              icon: Bot,
-            },
-            {
-              id: 'campaign_roas' as const,
-              labelAr: '📊 العائد الإعلاني ومبيعات الحملات (ROAS)',
-              labelEn: '📊 Campaign ROAS & Sales Attribution',
-              icon: TrendingUp,
-            },
-            {
-              id: 'campaigns' as const,
-              labelAr: 'صفحات هبوط تيك توك والحملات',
-              labelEn: 'TikTok Landing Pages & Campaigns',
-              icon: Flame,
-            },
-            {
-              id: 'offers' as const,
-              labelAr: 'عروض الموسم والتخفيضات',
-              labelEn: 'Seasonal Deals & Offers',
-              icon: Tag,
-            },
-            {
-              id: 'content' as const,
-              labelAr: 'إدارة المحتوى والمقالات (CMS)',
-              labelEn: 'CMS Content & Articles',
-              icon: FileText,
-            },
-            {
-              id: 'form_builder' as const,
-              labelAr: 'منشئ النماذج الديناميكية',
-              labelEn: 'Dynamic Form Builder',
-              icon: Sliders,
-            },
-            {
-              id: 'products' as const,
-              labelAr: 'إدارة المنتجات والتسعير المتدرج',
-              labelEn: 'Products & Tiered Pricing',
-              icon: Package,
-            },
-            {
-              id: 'orders' as const,
-              labelAr: 'خط إنتاج الورشة والطلبات',
-              labelEn: 'Workshop Pipeline & Orders',
-              icon: ClipboardList,
-            },
-            {
-              id: 'users' as const,
-              labelAr: 'إدارة الفريق والأدوار (RBAC)',
-              labelEn: 'Staff & RBAC Management',
-              icon: Users,
-            },
-          ].map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
-            const isAllowed = currentConfig.allowedTabs.includes(tab.id);
             const isActive = activeTab === tab.id;
 
             return (
@@ -345,11 +341,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-purple-600'}`} />
                 <span>{isAr ? tab.labelAr : tab.labelEn}</span>
-                {!isAllowed && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 font-normal">
-                    {isAr ? 'ترقية' : 'Elevate'}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -362,6 +353,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'sales_partners' && <AdminSalesPartnersTab isAr={isAr} />}
           {activeTab === 'qr_codes' && <AdminQRCodesTab isAr={isAr} />}
           {activeTab === 'commissions_wallet' && <AdminCommissionsWalletTab isAr={isAr} />}
+          {activeTab === 'payment_shipping' && <PaymentShippingManagementTab isAr={isAr} />}
           {activeTab === 'orchestrator' && (
             <AICampaignOrchestrator
               onOpenPreview={onOpenLandingPreview}

@@ -86,12 +86,15 @@ export default function App() {
     });
   }, [currentView, selectedSpecialtyId, selectedProductId]);
 
-  // React to authentication state changes: redirect if user logs out while in a protected portal
+  // React to authentication and role state changes: redirect if user logs out or customer loses access
+  const user = useAuthStore((state) => state.user);
   React.useEffect(() => {
     if (!isAuthenticated && (currentView === 'dashboard' || currentView === 'admin')) {
       setCurrentView('home');
+    } else if (currentView === 'admin' && user?.role === 'customer' && !useAuthStore.getState().hasPermission('access_admin')) {
+      setCurrentView('home');
     }
-  }, [isAuthenticated, currentView]);
+  }, [isAuthenticated, user?.role, currentView]);
 
   // Handle deep-linking from shared product URLs, partner referral links, or ad campaigns on mount
   React.useEffect(() => {
@@ -220,8 +223,21 @@ export default function App() {
     // Dynamic live check to avoid any stale React closure issues
     const isAuthed = useAuthStore.getState().isAuthenticated;
 
-    // Guard authenticated-only areas
-    if ((view === 'dashboard' || view === 'admin') && !isAuthed) {
+    // Guard authenticated-only areas and permissions
+    if (view === 'admin') {
+      const auth = useAuthStore.getState();
+      if (!auth.isAuthenticated) {
+        setAuthModalOpen(true);
+        return;
+      }
+      const canAccess =
+        auth.user?.role === 'admin' ||
+        auth.user?.role === 'manager' ||
+        auth.hasPermission('access_admin');
+      if (!canAccess) {
+        return;
+      }
+    } else if (view === 'dashboard' && !isAuthed) {
       setAuthModalOpen(true);
       return;
     }

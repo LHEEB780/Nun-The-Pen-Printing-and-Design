@@ -2,6 +2,43 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { OrderRecord, ManufacturingStatus } from './useCartStore';
 
+export type UserRole = 'admin' | 'manager' | 'customer';
+
+export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
+  admin: [
+    'access_admin',
+    'view_analytics',
+    'manage_orders',
+    'manage_products',
+    'manage_users',
+    'manage_offers',
+    'manage_partners',
+    'manage_shipping',
+    'specialty_gateways',
+    'view_store',
+    'track_orders',
+    'request_quote',
+    'view_gallery',
+  ],
+  manager: [
+    'access_admin',
+    'view_analytics',
+    'manage_orders',
+    'manage_offers',
+    'manage_partners',
+    'view_store',
+    'track_orders',
+    'view_gallery',
+  ],
+  customer: [
+    'view_store',
+    'track_orders',
+    'request_quote',
+    'view_gallery',
+    'loyalty_rewards',
+  ],
+};
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -11,6 +48,8 @@ export interface UserProfile {
   address: string;
   avatarUrl?: string;
   createdAt: string;
+  role: UserRole;
+  permissions: string[];
 }
 
 export interface SavedDesign {
@@ -221,7 +260,13 @@ interface AuthStore {
   requestProofRevision: (id: string, notes: string) => void;
   addDigitalProof: (proof: Omit<DigitalProof, 'id' | 'createdAt'>) => void;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  register: (profileData: Omit<UserProfile, 'id' | 'createdAt'>, password?: string) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    profileData: Omit<UserProfile, 'id' | 'createdAt' | 'role' | 'permissions'> & {
+      role?: UserRole;
+      permissions?: string[];
+    },
+    password?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   updateProfile: (updatedData: Partial<UserProfile>) => void;
@@ -255,6 +300,11 @@ interface AuthStore {
     discountCode: string;
     discountAmountIQD: number;
   }) => { success: boolean; message: string; discountCode?: string };
+  setUserRole: (role: UserRole) => void;
+  setUserPermissions: (permissions: string[]) => void;
+  hasPermission: (permission: string) => boolean;
+  addPermission: (permission: string) => void;
+  removePermission: (permission: string) => void;
 }
 
 // Initial dummy user for immediate demo evaluation
@@ -267,6 +317,8 @@ const DEMO_USER: UserProfile = {
   address: 'بغداد، حي المنصور، شارع 14 رمضان، عمارة الأفق، الطابق 2',
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
   createdAt: '2026-02-15',
+  role: 'admin',
+  permissions: ROLE_DEFAULT_PERMISSIONS.admin,
 };
 
 // Realistic mock past orders for customer history with live manufacturing tracking
@@ -698,6 +750,14 @@ export const useAuthStore = create<AuthStore>()(
         await new Promise((res) => setTimeout(res, 250));
         const normalized = (email || '').trim().toLowerCase();
         const isDemo = !normalized || normalized.includes('laheeb');
+        
+        let role: UserRole = 'customer';
+        if (isDemo || normalized.includes('admin')) {
+          role = 'admin';
+        } else if (normalized.includes('manager')) {
+          role = 'manager';
+        }
+
         const user: UserProfile = isDemo
           ? DEMO_USER
           : {
@@ -708,6 +768,8 @@ export const useAuthStore = create<AuthStore>()(
               governorate: 'بغداد - الكرخ',
               address: 'بغداد، العراق',
               createdAt: new Date().toISOString().split('T')[0],
+              role,
+              permissions: ROLE_DEFAULT_PERMISSIONS[role] || [],
             };
         set({ user, isAuthenticated: true });
         return { success: true };
@@ -715,13 +777,75 @@ export const useAuthStore = create<AuthStore>()(
 
       register: async (profileData, password) => {
         await new Promise((res) => setTimeout(res, 300));
+        const role: UserRole = (profileData as any).role || 'customer';
+        const permissions: string[] = (profileData as any).permissions || ROLE_DEFAULT_PERMISSIONS[role] || [];
         const newUser: UserProfile = {
           ...profileData,
           id: `usr-${Date.now()}`,
           createdAt: new Date().toISOString().split('T')[0],
+          role,
+          permissions,
         };
         set({ user: newUser, isAuthenticated: true });
         return { success: true };
+      },
+
+      setUserRole: (role: UserRole) => {
+        set((state) => {
+          if (!state.user) return state;
+          return {
+            user: {
+              ...state.user,
+              role,
+              permissions: [...(ROLE_DEFAULT_PERMISSIONS[role] || [])],
+            },
+          };
+        });
+      },
+
+      setUserPermissions: (permissions: string[]) => {
+        set((state) => {
+          if (!state.user) return state;
+          return {
+            user: {
+              ...state.user,
+              permissions: [...permissions],
+            },
+          };
+        });
+      },
+
+      hasPermission: (permission: string) => {
+        const user = get().user;
+        if (!user) return false;
+        if (user.role === 'admin') return true;
+        return Array.isArray(user.permissions) && user.permissions.includes(permission);
+      },
+
+      addPermission: (permission: string) => {
+        set((state) => {
+          if (!state.user) return state;
+          const current = state.user.permissions || [];
+          if (current.includes(permission)) return state;
+          return {
+            user: {
+              ...state.user,
+              permissions: [...current, permission],
+            },
+          };
+        });
+      },
+
+      removePermission: (permission: string) => {
+        set((state) => {
+          if (!state.user) return state;
+          return {
+            user: {
+              ...state.user,
+              permissions: (state.user.permissions || []).filter((p) => p !== permission),
+            },
+          };
+        });
       },
 
   forgotPassword: async (email) => {
@@ -821,6 +945,15 @@ export const useAuthStore = create<AuthStore>()(
       storage: createJSONStorage(() => localStorage),
       version: 1,
       migrate: (persistedState: any, _version: number) => {
+        if (persistedState?.user) {
+          if (!persistedState.user.role) {
+            const isDemo = persistedState.user.email?.includes('laheeb');
+            persistedState.user.role = isDemo ? 'admin' : 'customer';
+          }
+          if (!persistedState.user.permissions || !Array.isArray(persistedState.user.permissions)) {
+            persistedState.user.permissions = ROLE_DEFAULT_PERMISSIONS[persistedState.user.role as UserRole] || [];
+          }
+        }
         return persistedState || {};
       },
       partialize: (state) => ({
