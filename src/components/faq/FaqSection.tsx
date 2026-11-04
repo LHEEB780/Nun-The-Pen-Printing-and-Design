@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HelpCircle,
-  Search,
   ChevronDown,
   ChevronUp,
   Sparkles,
@@ -34,7 +33,6 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
 
   const sectionRef = useRef<HTMLElement>(null);
   const [activeCategory, setActiveCategory] = useState<FaqCategory>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   // Set of open item IDs (allows opening multiple or one at a time)
   const [openIds, setOpenIds] = useState<Set<string>>(new Set(['faq-custom-1']));
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -76,29 +74,13 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
     },
   ];
 
-  // Filter items based on activeCategory and searchQuery
+  // Filter items based on activeCategory
   const filteredFaqs = useMemo(() => {
-    let items = FAQ_DATA;
-
-    if (activeCategory !== 'all') {
-      items = items.filter((item) => item.category === activeCategory);
+    if (activeCategory === 'all') {
+      return FAQ_DATA;
     }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      items = items.filter(
-        (item) =>
-          item.questionAr.toLowerCase().includes(q) ||
-          item.questionEn.toLowerCase().includes(q) ||
-          item.answerAr.toLowerCase().includes(q) ||
-          item.answerEn.toLowerCase().includes(q) ||
-          item.tagsAr.some((t) => t.toLowerCase().includes(q)) ||
-          item.tagsEn.some((t) => t.toLowerCase().includes(q))
-      );
-    }
-
-    return items;
-  }, [activeCategory, searchQuery]);
+    return FAQ_DATA.filter((item) => item.category === activeCategory);
+  }, [activeCategory]);
 
   const toggleItem = (id: string) => {
     setOpenIds((prev) => {
@@ -149,45 +131,28 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
             aria-hidden="true"
           />
 
-          {/* Section Header */}
-          <div className="text-start mb-6 sm:mb-8">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-stone-900 tracking-tight">
-              {isAr ? 'التعليمات والأسئلة الشائعة' : 'Frequently Asked Questions'}
-            </h2>
-          </div>
-
-          {/* Search Bar & Quick Expand/Collapse Controls */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-stone-400 absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={
-                  isAr
-                    ? 'ابحث في الأسئلة (مثال: شحن بغداد، تنظيف الأكريليك، موعد التسليم)...'
-                    : 'Search FAQs (e.g., shipping, acrylic cleaning, rush order)...'
-                }
-                className="w-full ps-10 pe-9 py-2.5 text-sm rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-600 bg-stone-50/60 transition-all text-stone-900 placeholder:text-stone-400"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700 bg-stone-200/60 hover:bg-stone-200 px-1.5 py-0.5 rounded-full"
-                  title={isAr ? 'مسح البحث' : 'Clear search'}
-                >
-                  ✕
-                </button>
-              )}
+          {/* Section Header with Elevated Typography & Quick Expand/Collapse Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 pb-5 border-b border-stone-100">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-amber-900 text-xs font-semibold">
+                <HelpCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>{isAr ? 'مركز الإرشادات والأسئلة الشائعة' : 'Help & Guidance Center'}</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-stone-900 tracking-tight">
+                {isAr ? 'التعليمات والأسئلة الشائعة' : 'Frequently Asked Questions'}
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-500 max-w-xl leading-relaxed">
+                {isAr
+                  ? 'إجابات معتمدة حول مواعيد التجهيز، أجور الشحن لكافة المحافظات، وتفاصيل الطلبات المخصصة'
+                  : 'Answers regarding production times, nationwide shipping, and bespoke custom orders'}
+              </p>
             </div>
 
             {/* Quick Global Expand / Collapse All */}
-            <div className="flex items-center gap-2 shrink-0 text-xs">
+            <div className="flex items-center gap-2 self-start sm:self-end shrink-0 text-xs">
               <button
                 onClick={handleExpandAll}
-                className="px-3 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition-colors flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition-colors flex items-center gap-1.5 border border-stone-200/70 shadow-2xs"
                 title={isAr ? 'توسيع كافة الأسئلة' : 'Expand all'}
               >
                 <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
@@ -195,7 +160,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
               </button>
               <button
                 onClick={handleCollapseAll}
-                className="px-3 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition-colors flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold transition-colors flex items-center gap-1.5 border border-stone-200/70 shadow-2xs"
                 title={isAr ? 'طي كافة الأسئلة' : 'Collapse all'}
               >
                 <ChevronUp className="w-3.5 h-3.5 text-stone-500" />
@@ -238,19 +203,16 @@ export const FaqSection: React.FC<FaqSectionProps> = ({
               <div className="text-center py-12 px-4">
                 <HelpCircle className="w-10 h-10 text-stone-300 mx-auto mb-3" />
                 <h3 className="text-base font-bold text-stone-800 mb-1">
-                  {isAr ? 'لم نجد أي سؤال يطابق بحثك' : 'No matching questions found'}
+                  {isAr ? 'لا توجد أسئلة في هذا القسم حالياً' : 'No questions in this section currently'}
                 </h3>
                 <p className="text-xs text-stone-500 mb-4">
                   {isAr
-                    ? 'جرب البحث بكلمات أخرى أو تواصل مباشرة مع فريق الدعم والإنتاج عبر واتساب.'
-                    : 'Try different search keywords or reach out directly via WhatsApp.'}
+                    ? 'يمكنك الاطلاع على كافة الأسئلة أو التواصل مباشرة مع فريق الدعم والإنتاج عبر واتساب.'
+                    : 'You can browse all questions or reach out directly via WhatsApp.'}
                 </p>
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setActiveCategory('all');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-amber-800 text-white text-xs font-bold hover:bg-amber-700"
+                  onClick={() => setActiveCategory('all')}
+                  className="px-4 py-2 rounded-xl bg-amber-800 text-white text-xs font-bold hover:bg-amber-700 transition"
                 >
                   {isAr ? 'عرض كافة الأسئلة' : 'Show All FAQs'}
                 </button>

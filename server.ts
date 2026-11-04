@@ -11,7 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = Number(process.env.PORT) || 3000;
+// AI Studio dev server must run on port 3000 (DEFAULT_APP_PORT); NGINX runs on 8080
+const port = Number(process.env.DEFAULT_APP_PORT) || 3000;
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -1041,7 +1042,7 @@ async function startServer() {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);

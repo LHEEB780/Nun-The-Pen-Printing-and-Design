@@ -14,6 +14,7 @@ import {
 import { useAutonomousAgentsStore } from '../../store/useAutonomousAgentsStore';
 import { DigitalEmployeeCard } from './DigitalEmployeeCard';
 import { PartnerApplicationModal } from './PartnerApplicationModal';
+import { PartnerAcademySocial } from './PartnerAcademySocial';
 
 interface PartnerPortalProps {
   onBackToStore: () => void;
@@ -1803,78 +1804,10 @@ ${window.location.origin}/?ref=${activePartner.referralCode}
         )}
 
         {/* ========================================================= */}
-        {/* TAB 7: PRODUCT ACADEMY & SALES GUIDES */}
+        {/* TAB 7: PRODUCT ACADEMY & FIELD PERSUASION (SOCIAL FEED) */}
         {/* ========================================================= */}
         {activeTab === 'academy' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-5 h-5 text-amber-600" />
-                <h2 className="text-xl font-bold text-stone-900">
-                  {isAr ? 'أكاديمية المنتجات وأدلة الإقناع الميداني' : 'Product Sales Academy'}
-                </h2>
-              </div>
-              <p className="text-xs text-stone-500 max-w-2xl leading-relaxed">
-                {isAr 
-                  ? 'أدلة إرشادية عملية تفصيلية لكل منتج: الفئة المستهدفة، نقاط الإقناع الحاسمة، الأخطاء الشائعة أثناء العرض، وكيفية الرد على الاعتراضات.'
-                  : 'Practical field guides on audience segmentation, pitch points, and objection handling.'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {academyGuides.map((guide) => (
-                <div key={guide.productId} className="bg-white rounded-3xl border border-stone-200 shadow-xs overflow-hidden flex flex-col justify-between">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
-                        {guide.category}
-                      </span>
-                      <span className="text-[10px] font-mono text-stone-400">
-                        {guide.productId}
-                      </span>
-                    </div>
-
-                    <h3 className="text-base font-bold text-stone-900 mb-2">
-                      {guide.productTitleAr}
-                    </h3>
-
-                    <div className="text-xs text-stone-600 mb-4 bg-stone-50 p-2.5 rounded-xl border border-stone-100">
-                      <strong className="text-stone-800 block mb-0.5">{isAr ? 'الجمهور المستهدف:' : 'Target:'}</strong>
-                      <span>{guide.targetAudienceAr}</span>
-                    </div>
-
-                    {/* Pitch points */}
-                    <div className="mb-4">
-                      <strong className="text-xs font-bold text-stone-800 block mb-1.5">{isAr ? 'أبرز نقاط الإقناع:' : 'Key Pitch Points:'}</strong>
-                      <ul className="space-y-1.5 text-xs text-stone-600">
-                        {guide.pitchPointsAr.map((pt, pIdx) => (
-                          <li key={pIdx} className="flex items-start gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                            <span>{pt}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Common mistakes */}
-                    <div className="p-3 bg-rose-50/70 border border-rose-100 rounded-xl text-xs text-rose-900">
-                      <strong className="block mb-0.5 text-rose-950 font-semibold">{isAr ? 'خطأ شائع تجنبه:' : 'Common Mistake:'}</strong>
-                      <span>{guide.commonMistakesAr}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between">
-                    <span className="text-xs text-stone-500 font-medium">
-                      {isAr ? 'نصيحة التسعير:' : 'Pricing tip:'}
-                    </span>
-                    <span className="text-xs font-bold text-amber-800">
-                      {guide.pricingTipsAr}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PartnerAcademySocial activePartner={activePartner} isAr={isAr} />
         )}
       </main>
 
