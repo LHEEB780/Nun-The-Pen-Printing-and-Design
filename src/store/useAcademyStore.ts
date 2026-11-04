@@ -111,6 +111,9 @@ interface AcademyState {
   
   incrementViewCount: (articleId: string) => void;
   shareArticle: (articleId: string) => void;
+  addArticle: (article: Omit<AcademyArticle, 'id' | 'publishedAt' | 'stats' | 'reactions' | 'userReaction' | 'comments'>) => void;
+  deleteArticle: (articleId: string) => void;
+  resetToDefaults: () => void;
 }
 
 const INITIAL_ARTICLES: AcademyArticle[] = [
@@ -703,6 +706,36 @@ export const useAcademyStore = create<AcademyState>()(
             };
           }),
         }));
+      },
+
+      addArticle: (newArticleData) => {
+        const id = `art-${Date.now()}`;
+        const newArticle: AcademyArticle = {
+          ...newArticleData,
+          id,
+          publishedAt: 'الآن',
+          stats: { views: 1, shares: 0, savedCount: 0 },
+          reactions: { like: 0, love: 0, insight: 0, fire: 0, clap: 0 },
+          userReaction: null,
+          comments: [],
+        };
+        set((state) => ({
+          articles: [newArticle, ...state.articles],
+        }));
+      },
+
+      deleteArticle: (articleId) => {
+        set((state) => ({
+          articles: state.articles.filter((art) => art.id !== articleId),
+          savedArticleIds: state.savedArticleIds.filter((id) => id !== articleId),
+        }));
+      },
+
+      resetToDefaults: () => {
+        set({
+          articles: INITIAL_ARTICLES,
+          savedArticleIds: [],
+        });
       },
     }),
     {

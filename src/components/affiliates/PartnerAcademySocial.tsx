@@ -3,7 +3,7 @@ import {
   Award, Search, Filter, BookOpen, Clock, Eye, Share2, Bookmark, Check,
   Copy, MessageSquare, Flame, Lightbulb, Heart, ThumbsUp, Send, Reply,
   Sparkles, CheckCircle2, AlertTriangle, ShieldCheck, Printer, ArrowRight,
-  ExternalLink, ChevronRight, X, Mail, Smartphone
+  ExternalLink, ChevronRight, X, Mail, Smartphone, Plus, Trash2, Image as ImageIcon
 } from 'lucide-react';
 import { 
   useAcademyStore, 
@@ -97,6 +97,9 @@ export const PartnerAcademySocial: React.FC<PartnerAcademySocialProps> = ({
     toggleReplyLike,
     incrementViewCount,
     shareArticle,
+    addArticle,
+    deleteArticle,
+    resetToDefaults,
   } = useAcademyStore();
 
   // Full-article modal state
@@ -113,6 +116,21 @@ export const PartnerAcademySocial: React.FC<PartnerAcademySocialProps> = ({
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<string | null>(null);
+
+  // Create article modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState<'restaurants_cafes' | 'medical_clinics' | 'corporate_vip' | 'objection_handling' | 'quality_secrets'>('restaurants_cafes');
+  const [newDifficulty, setNewDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [newReadingTime, setNewReadingTime] = useState(4);
+  const [newSummary, setNewSummary] = useState('');
+  const [newCoverImage, setNewCoverImage] = useState('https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80');
+  const [newHeroBadge, setNewHeroBadge] = useState('جديد في الأكاديمية 💡');
+  const [newPitchScript, setNewPitchScript] = useState('');
+  const [newSectionTitle, setNewSectionTitle] = useState('المدخل الذكي لإغلاق الصفقة');
+  const [newSectionContent, setNewSectionContent] = useState('');
+  const [newObjection, setNewObjection] = useState('');
+  const [newObjectionScript, setNewObjectionScript] = useState('');
 
   // Active full article
   const currentModalArticle = articles.find((a) => a.id === selectedArticleId);
@@ -237,8 +255,89 @@ export const PartnerAcademySocial: React.FC<PartnerAcademySocialProps> = ({
       text: text.trim(),
     });
 
-    setReplyInputs((prev) => ({ ...prev, [commentId]: '' }));
-    setActiveReplyCommentId(null);
+  };
+
+  // Preset cover images for quick selection
+  const PRESET_COVERS = [
+    { labelAr: 'مطبوعات ورقية وكرتونية', url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80' },
+    { labelAr: 'مطاعم وقوائم طعام فاخرة', url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80' },
+    { labelAr: 'عيادات ومراكز طبية', url: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80' },
+    { labelAr: 'دروع خشبية وأكريليك وليزر', url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80' },
+    { labelAr: 'شركات ومكاتب VIP', url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80' },
+  ];
+
+  // Publish new article handler
+  const handlePublishArticle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newSummary.trim()) {
+      return;
+    }
+
+    const catObj = CATEGORIES.find((c) => c.id === newCategory);
+    const difficultyLabels = {
+      beginner: isAr ? 'أساسي (مبتدئ)' : 'Beginner',
+      intermediate: isAr ? 'متوسط (زيارات ميدانية)' : 'Intermediate',
+      advanced: isAr ? 'متقدم (صفقات B2B كبرى)' : 'Advanced Deals',
+    };
+
+    addArticle({
+      titleAr: newTitle.trim(),
+      titleEn: newTitle.trim(),
+      slug: `custom-guide-${Date.now()}`,
+      category: newCategory,
+      categoryLabelAr: catObj ? catObj.labelAr.replace(/[^\u0600-\u06FF\s&]/g, '').trim() : 'دليل ميداني',
+      difficulty: newDifficulty,
+      difficultyLabelAr: difficultyLabels[newDifficulty],
+      readingTimeMinutes: Number(newReadingTime) || 4,
+      author: {
+        name: activePartner.fullName || 'شريك استوديو نون والقلم',
+        role: `${activePartner.city} • مستشار تطوير مبيعات`,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        experienceYears: 4,
+      },
+      summaryAr: newSummary.trim(),
+      coverImage: newCoverImage || PRESET_COVERS[0].url,
+      heroBadgeAr: newHeroBadge || 'دليل تدريبي جديد 💡',
+      sections: [
+        {
+          title: newSectionTitle || (isAr ? 'خطة الإقناع الميداني ومزايا المنتج' : 'Field Persuasion Strategy'),
+          content: newSectionContent.trim() || newSummary.trim(),
+          bulletPoints: [
+            isAr ? 'التركيز على القيمة الإجمالية وتوفير تكاليف الاستبدال للمشتري.' : 'Focus on value and long-term durability.',
+            isAr ? 'تقديم عينة واقعية ملموسة باليد لإبهار العميل فوراً.' : 'Present tangible sample for immediate impact.',
+            isAr ? 'ضمان التسليم السريع وجودة الطباعة من استوديو نون والقلم.' : 'Guarantee fast turnaround and highest printing standards.',
+          ],
+        },
+      ],
+      wordForWordPitchScript:
+        newPitchScript.trim() ||
+        `«مرحباً أستاذ، أنا ${activePartner.fullName} من استوديو نون والقلم ببغداد. أحضرت لك نموذجاً حصرياً ومميزاً يناسب نشاطكم الراقي لرفع مبيعاتكم وترسيخ علامتكم التجارية...»`,
+      objectionsHandled: newObjection.trim()
+        ? [
+            {
+              objection: newObjection.trim(),
+              clientMindset: isAr
+                ? 'العميل يقارن بالسعر الظاهري للخيارات الرخيصة دون حساب العمر التشغيلي وهيبة البراند.'
+                : 'Client compares price without considering longevity.',
+              bestScriptAr:
+                newObjectionScript.trim() ||
+                (isAr
+                  ? 'بالتأكيد أستاذنا، ولكن الفارق أن خاماتنا تعيش لسنوات دون تلف، مما يوفر عليك تكلفة الاستبدال المتكرر ويحمي سمعة المكان.'
+                  : 'Certainly, but our premium build lasts years without wearing out.'),
+              avoidSayingAr: isAr ? '«خاماتنا أفضل وخامات غيرنا رديئة»' : 'Never badmouth competitors directly',
+            },
+          ]
+        : [],
+    });
+
+    setIsCreateModalOpen(false);
+    // Reset form
+    setNewTitle('');
+    setNewSummary('');
+    setNewPitchScript('');
+    setNewSectionContent('');
+    setNewObjection('');
+    setNewObjectionScript('');
   };
 
   // Helper to calculate total reactions count
@@ -391,6 +490,17 @@ export const PartnerAcademySocial: React.FC<PartnerAcademySocialProps> = ({
               <option value="comments">{isAr ? 'الأكثر نقاشاً وتعليقاً' : 'Most Commented'}</option>
               <option value="latest">{isAr ? 'الأحدث نشراً' : 'Latest Added'}</option>
             </select>
+
+            {/* New Guide Action Button */}
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs transition shrink-0 w-full sm:w-auto"
+              title={isAr ? 'نشر مقالة أو دليل جديد في الأكاديمية' : 'Publish new guide'}
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAr ? 'نشر دليل جديد' : 'New Guide'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -858,6 +968,19 @@ export const PartnerAcademySocial: React.FC<PartnerAcademySocialProps> = ({
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    if (window.confirm(isAr ? 'هل أنت متأكد من حذف هذا الدليل من الأكاديمية؟' : 'Delete this guide from Academy?')) {
+                      deleteArticle(currentModalArticle.id);
+                      setSelectedArticleId(null);
+                    }
+                  }}
+                  className="p-2 rounded-xl text-stone-400 hover:text-rose-400 hover:bg-stone-800 transition"
+                  title={isAr ? 'حذف هذا الدليل' : 'Delete guide'}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setSelectedArticleId(null)}
                   className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition"
                 >
@@ -1264,6 +1387,207 @@ export const PartnerAcademySocial: React.FC<PartnerAcademySocialProps> = ({
                 {isAr ? 'إلغاء وإغلاق' : 'Close'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 6. CREATE NEW ACADEMY ARTICLE / GUIDE MODAL */}
+      {/* ========================================================= */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 bg-stone-900 text-white flex items-center justify-between border-b border-stone-800 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold font-serif text-white">
+                    {isAr ? 'نشر دليل ميداني أو مقال تدريبي جديد' : 'Publish New Academy Field Guide'}
+                  </h3>
+                  <p className="text-[11px] text-stone-400">
+                    {isAr ? 'ينشر مباشرة في بطاقات الأكاديمية ويظهر فوراً لشركاء التوظيف وفريق المبيعات' : 'Visible immediately in the partner grid feed'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <form onSubmit={handlePublishArticle} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+              {/* Title */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-stone-900 block">
+                  {isAr ? 'عنوان الدليل أو المقالة:' : 'Guide Title:'} <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder={isAr ? 'مثال: دليل إقناع الفنادق والمطاعم بحوافظ المنيو الجلدية الفاخرة' : 'e.g. Luxury VIP corporate pitch guide'}
+                  className="w-full p-3 rounded-xl border border-stone-200 focus:border-amber-500 outline-none text-stone-900 text-xs sm:text-sm bg-stone-50"
+                />
+              </div>
+
+              {/* Category, Difficulty & Read time */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1 sm:col-span-1">
+                  <label className="font-bold text-stone-900 block">{isAr ? 'القسم:' : 'Category:'}</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as any)}
+                    className="w-full p-2.5 rounded-xl border border-stone-200 focus:border-amber-500 outline-none bg-white text-stone-800"
+                  >
+                    <option value="restaurants_cafes">المطاعم والكافيهات ☕</option>
+                    <option value="medical_clinics">العيادات والمشافي 🩺</option>
+                    <option value="corporate_vip">شركات ومكاتب VIP 💼</option>
+                    <option value="objection_handling">الرد على الاعتراضات 🛡️</option>
+                    <option value="quality_secrets">أسرار الخامات والطباعة 🔍</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-stone-900 block">{isAr ? 'مستوى الصعوبة:' : 'Difficulty:'}</label>
+                  <select
+                    value={newDifficulty}
+                    onChange={(e) => setNewDifficulty(e.target.value as any)}
+                    className="w-full p-2.5 rounded-xl border border-stone-200 focus:border-amber-500 outline-none bg-white text-stone-800"
+                  >
+                    <option value="beginner">أساسي (مبتدئ)</option>
+                    <option value="intermediate">متوسط (ميداني)</option>
+                    <option value="advanced">متقدم (B2B)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-stone-900 block">{isAr ? 'وقت القراءة (دقائق):' : 'Read Time (min):'}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={newReadingTime}
+                    onChange={(e) => setNewReadingTime(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl border border-stone-200 focus:border-amber-500 outline-none bg-white text-stone-800"
+                  />
+                </div>
+              </div>
+
+              {/* Cover Image with Presets */}
+              <div className="space-y-2">
+                <label className="font-bold text-stone-900 block">{isAr ? 'صورة الغلاف (اختر قالباً جاهزاً أو أدخل رابطاً):' : 'Cover Image:'}</label>
+                
+                {/* Presets chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_COVERS.map((preset) => (
+                    <button
+                      key={preset.url}
+                      type="button"
+                      onClick={() => setNewCoverImage(preset.url)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition ${
+                        newCoverImage === preset.url
+                          ? 'bg-amber-100 text-amber-900 border-amber-400 font-bold shadow-2xs'
+                          : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                      }`}
+                    >
+                      {preset.labelAr}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={newCoverImage}
+                    onChange={(e) => setNewCoverImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="flex-1 p-2.5 rounded-xl border border-stone-200 focus:border-amber-500 outline-none text-stone-800 text-xs font-mono bg-stone-50"
+                  />
+                  {newCoverImage && (
+                    <img
+                      src={newCoverImage}
+                      alt="Preview"
+                      className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Fast Summary */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-stone-900 block">
+                  {isAr ? 'الملخص السريع (سيعرض في واجهة البطاقة الشبكية):' : 'Quick Summary:'} <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={newSummary}
+                  onChange={(e) => setNewSummary(e.target.value)}
+                  placeholder={isAr ? 'ملخص عملي في سطرين أو ثلاثة يوضح جوهر الدليل للزملاء...' : 'Summary shown on card...'}
+                  className="w-full p-2.5 rounded-xl border border-stone-200 focus:border-amber-500 outline-none text-stone-900 bg-stone-50 resize-none"
+                />
+              </div>
+
+              {/* Word-for-Word Pitch Script */}
+              <div className="space-y-1.5 p-3 bg-amber-50/70 rounded-2xl border border-amber-200">
+                <label className="font-bold text-amber-950 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{isAr ? 'سيناريو الإقناع الذهبي كلمة بكلمة (Pitch Script):' : 'Golden Pitch Script:'}</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={newPitchScript}
+                  onChange={(e) => setNewPitchScript(e.target.value)}
+                  placeholder={isAr ? '«مرحباً أستاذ، أنا فلان من استوديو نون والقلم... جئت اليوم لأنني لاحظت...»' : 'Word-for-word pitch script...'}
+                  className="w-full p-2.5 rounded-xl border border-amber-300 focus:border-amber-500 outline-none text-stone-900 bg-white resize-none text-xs"
+                />
+              </div>
+
+              {/* Objection Handling */}
+              <div className="space-y-2 p-3 bg-stone-50 rounded-2xl border border-stone-200">
+                <label className="font-bold text-stone-900 block">{isAr ? 'أبرز اعتراض وكيفية الرد الذكي عليه:' : 'Key Objection & Counter Script:'}</label>
+                <input
+                  type="text"
+                  value={newObjection}
+                  onChange={(e) => setNewObjection(e.target.value)}
+                  placeholder={isAr ? 'اعتراض العميل: مثال «الأسعار مرتفعة مقارنة بالخيارات العادية»' : 'Client objection...'}
+                  className="w-full p-2 rounded-xl border border-stone-200 focus:border-amber-500 outline-none text-stone-900 bg-white"
+                />
+                <textarea
+                  rows={2}
+                  value={newObjectionScript}
+                  onChange={(e) => setNewObjectionScript(e.target.value)}
+                  placeholder={isAr ? 'ردك الميداني: «بالتأكيد أستاذنا، ولكن الفارق أن خاماتنا تعيش سنتين دون تلف مما يوفر عليك تكلفة الاستبدال المستمر...»' : 'Best counter response...'}
+                  className="w-full p-2 rounded-xl border border-stone-200 focus:border-amber-500 outline-none text-stone-900 bg-white resize-none"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-2 border-t border-stone-100 flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold transition"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-md transition"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{isAr ? 'نشر في الأكاديمية فوراً' : 'Publish to Academy'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
