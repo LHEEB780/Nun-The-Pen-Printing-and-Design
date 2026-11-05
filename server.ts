@@ -11,8 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-// AI Studio dev server must run on port 3000 (DEFAULT_APP_PORT); NGINX runs on 8080
-const port = Number(process.env.DEFAULT_APP_PORT) || 3000;
+// Dynamic port: AI Studio uses DEFAULT_APP_PORT (3000); cloud providers (Render, Railway, Fly.io) inject PORT
+const port = Number(process.env.DEFAULT_APP_PORT) || Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '1mb' }));
 
