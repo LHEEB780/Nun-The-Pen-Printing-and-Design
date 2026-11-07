@@ -25,6 +25,18 @@ class RootErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('RootErrorBoundary caught an error:', error, errorInfo);
+    // Auto-reload on stale dynamic import or network glitch during app update
+    const isModuleError =
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('error loading dynamically imported module');
+    if (isModuleError && typeof window !== 'undefined') {
+      const lastReload = sessionStorage.getItem('last_auto_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 8000) {
+        sessionStorage.setItem('last_auto_chunk_reload', String(now));
+        window.location.reload();
+      }
+    }
   }
 
   render() {

@@ -1849,3 +1849,5 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
     </div>
   );
 };
+
+export default CustomerDashboard;

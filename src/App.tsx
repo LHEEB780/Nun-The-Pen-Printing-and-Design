@@ -30,19 +30,55 @@ import { useAffiliateStore } from './store/useAffiliateStore';
 import { COMPANY_CONTACT } from './data/mockData';
 import { initAnalytics, trackPageView, trackEvent } from './utils/analytics';
 
-// Heavy route-level views are lazy-loaded (React.lazy) so the initial bundle
-// stays small — the admin dashboard (recharts) alone used to add ~700KB.
-const PortfolioPage = lazy(() => import('./components/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
-const SpecialtyHubPage = lazy(() => import('./components/specialty/SpecialtyHubPage').then((m) => ({ default: m.SpecialtyHubPage })));
-const ShopPage = lazy(() => import('./components/shop/ShopPage').then((m) => ({ default: m.ShopPage })));
-const ProductDetailPage = lazy(() => import('./components/product/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
-const CheckoutPage = lazy(() => import('./components/checkout/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
-const OrderConfirmationPage = lazy(() => import('./components/checkout/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })));
-const CustomerDashboard = lazy(() => import('./components/dashboard/CustomerDashboard').then((m) => ({ default: m.CustomerDashboard })));
-const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
-const SeasonalOffersPage = lazy(() => import('./components/offers/SeasonalOffersPage').then((m) => ({ default: m.SeasonalOffersPage })));
-const DynamicLandingPage = lazy(() => import('./components/landing/DynamicLandingPage').then((m) => ({ default: m.DynamicLandingPage })));
-const PartnerPortal = lazy(() => import('./components/affiliates/PartnerPortal').then((m) => ({ default: m.PartnerPortal })));
+// Direct import for core CustomerDashboard to prevent dynamic module fetch failures
+import { CustomerDashboard } from './components/dashboard/CustomerDashboard';
+
+// Resilient lazy loader with retry for heavy views (admin recharts, etc.)
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T } | any>,
+  retries = 2,
+  interval = 600
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    new Promise<{ default: T }>((resolve, reject) => {
+      const attempt = (remaining: number) => {
+        factory()
+          .then((m) => resolve({ default: m.default || m[Object.keys(m)[0]] }))
+          .catch((error) => {
+            if (remaining <= 0) {
+              const isFetchError =
+                error?.message?.includes('dynamically imported module') ||
+                error?.message?.includes('Failed to fetch') ||
+                error?.name === 'ChunkLoadError';
+              if (isFetchError && typeof window !== 'undefined') {
+                const hasReloaded = sessionStorage.getItem('chunk_reload');
+                if (!hasReloaded) {
+                  sessionStorage.setItem('chunk_reload', 'true');
+                  window.location.reload();
+                  return;
+                }
+              }
+              reject(error);
+              return;
+            }
+            setTimeout(() => attempt(remaining - 1), interval);
+          });
+      };
+      attempt(retries);
+    })
+  );
+}
+
+const PortfolioPage = lazyWithRetry(() => import('./components/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
+const SpecialtyHubPage = lazyWithRetry(() => import('./components/specialty/SpecialtyHubPage').then((m) => ({ default: m.SpecialtyHubPage })));
+const ShopPage = lazyWithRetry(() => import('./components/shop/ShopPage').then((m) => ({ default: m.ShopPage })));
+const ProductDetailPage = lazyWithRetry(() => import('./components/product/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CheckoutPage = lazyWithRetry(() => import('./components/checkout/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const OrderConfirmationPage = lazyWithRetry(() => import('./components/checkout/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })));
+const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const SeasonalOffersPage = lazyWithRetry(() => import('./components/offers/SeasonalOffersPage').then((m) => ({ default: m.SeasonalOffersPage })));
+const DynamicLandingPage = lazyWithRetry(() => import('./components/landing/DynamicLandingPage').then((m) => ({ default: m.DynamicLandingPage })));
+const PartnerPortal = lazyWithRetry(() => import('./components/affiliates/PartnerPortal').then((m) => ({ default: m.PartnerPortal })));
 
 import type { AdminDashboardTab } from './components/admin/AdminDashboard';
 
@@ -325,7 +361,7 @@ export default function App() {
         {currentView === 'specialty' && (
           <SpecialtyHubPage
             specialtyId={selectedSpecialtyId}
-            onSelectSpecialty={(sid) => {
+            onSelectSpecialty={(sid: SpecialtyId) => {
               setSelectedSpecialtyId(sid);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
